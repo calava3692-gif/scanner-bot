@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 20px; }
+        #reader { width: 100%; max-width: 500px; margin: auto; }
+    </style>
+</head>
+<body>
+    <h2>Escanear La Serie/QR</h2>
+    <div id="reader"></div>
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        const qr = new Html5Qrcode("reader");
+
+        qr.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: 250 },
+            (text) => {
+                tg.sendData(text);
+                qr.stop();
+                tg.close();
+            }
+        );
+    </script>
+</body>
+</html>
