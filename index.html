@@ -31,6 +31,7 @@
     .qty-inputs { display: flex; gap: 10px; margin-top: 5px; }
     .qty-inputs div { flex: 1; }
     .status-msg { text-align: center; padding: 10px; color: var(--tg-theme-hint-color, #666); }
+    .tecnico-info { font-size: 0.95em; color: var(--tg-theme-hint-color, #666); margin: 5px 0 15px 0; }
   </style>
 </head>
 <body>
@@ -50,24 +51,20 @@
     const tg = window.Telegram.WebApp;
     tg.expand(); 
 
-    // ⚠️ REEMPLAZA ESTO CON TU URL DE APPS SCRIPT REAL (LA MISMA QUE PUSISTE EN PYTHON)
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxYg1MBY3_cNQaGrMVppUZe_F5StlJVamUWdFFdYRg203v1Nugki3p278RaDHrVfZLU5g/exec"; 
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyX3fYLX951KbOe7rYzUf13IltukO7O4dI9oKWh0nQSBiSuU2v_L7DeW77yuX7oonxpfw/exec"; 
 
     let pedidoActual = null;
 
     document.addEventListener("DOMContentLoaded", analizarEntrada);
 
     function analizarEntrada() {
-      // 1. Verificar si viene un ID directo desde el botón del chat de Telegram
       const urlParams = new URLSearchParams(window.location.search);
       const idParam = urlParams.get('id');
       
       if (idParam) {
-        // Si viene el ID, ocultamos el buscador superior para dejar la pantalla limpia
         document.getElementById('bloqueBusqueda').style.display = 'none';
         cargarPedidoIndividual(idParam);
       } else {
-        // Si se abrió sin ID, cargamos las sugerencias de la lista normal
         obtenerPedidosPendientes();
       }
     }
@@ -119,7 +116,13 @@
     }
 
     function renderizarPedido() {
-      let html = `<div class="card"><h4>Solicitud: ${pedidoActual.id}</h4>`;
+      // Modificado para incluir de forma elegante la información del técnico ejecutor
+      let html = `
+        <div class="card">
+          <h4 style="margin: 0;">Solicitud: ${pedidoActual.id}</h4>
+          <div class="tecnico-info">👤 <strong>Técnico:</strong> ${pedidoActual.usuario || 'No especificado'}</div>
+      `;
+      
       pedidoActual.items.forEach((item, index) => {
         html += `
           <div class="item-row">
@@ -151,7 +154,7 @@
       const itemsAEnviar = pedidoActual.items.map((item, index) => {
         return {
           codigo: item.codigo,
-          cantidad: document.getElementById(`autorizado-${index}`).value
+          amount: document.getElementById(`autorizado-${index}`).value
         };
       });
 
