@@ -22,6 +22,11 @@
       border-radius: 8px;
       border: 1px solid var(--tg-theme-hint-color, #ccc);
       box-sizing: border-box;
+      font-size: 16px; /* Evita el zoom automático molesto en iOS */
+    }
+    input {
+      background-color: var(--tg-theme-bg-color, #ffffff);
+      color: var(--tg-theme-text-color, #000000);
     }
     button {
       background-color: var(--tg-theme-button-color, #2481cc);
@@ -40,11 +45,16 @@
     .item-row {
       margin-bottom: 15px;
       padding-bottom: 10px;
-      border-bottom: 1px solid #ddd;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
     }
     .item-detail { font-size: 0.9em; color: var(--tg-theme-hint-color, #666); }
     .qty-inputs { display: flex; gap: 10px; margin-top: 5px; }
     .qty-inputs div { flex: 1; }
+    .status-msg {
+      text-align: center;
+      padding: 10px;
+      color: var(--tg-theme-hint-color, #666);
+    }
   </style>
 </head>
 <body>
@@ -52,8 +62,10 @@
   <h3>📋 Autorización de Pedidos</h3>
   
   <div class="search-box">
-    <label for="idPedido">Número de Solicitud:</label>
-    <input type="number" id="idPedido" placeholder="Ej. 598123">
+    <label for="idPedido">Escribe o selecciona un ID Pendiente:</label>
+    <input type="text" id="idPedido" list="listaPendientes" placeholder="Buscando pedidos pendientes..." autocomplete="off">
+    <datalist id="listaPendientes"></datalist>
+    
     <button onclick="cargarPedido()" style="margin-top: 10px;">🔍 Buscar Pedido</button>
   </div>
 
@@ -62,32 +74,60 @@
   <script>
     // Inicializar Telegram WebApp
     const tg = window.Telegram.WebApp;
-    tg.expand(); // Expandir la ventana al máximo
+    tg.expand(); 
 
-    // REPLAZA CON TU URL DE APPS SCRIPT
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxYg1MBY3_cNQaGrMVppUZe_F5StlJVamUWdFFdYRg203v1Nugki3p278RaDHrVfZLU5g/exec"; 
+    // REPLAZA ESTO CON LA URL REAL DE TU DEPLOY EN GOOGLE APPS SCRIPT
+    const WEB_APP_URL = "TU_URL_DE_APPS_SCRIPT_AQUÍ"; 
 
     let pedidoActual = null;
 
-    async function cargarPedido() {
-      const id = document.getElementById('idPedido').value;
-      if(!id) return alert("Ingresa un ID");
+    // Ejecutar apenas cargue la app para traer los pendientes de la hoja
+    document.addEventListener("DOMContentLoaded", obtenerPedidosPendientes);
+
+    async function obtenerPedidosPendientes() {
+      const datalist = document.getElementById('listaPendientes');
+      const input = document.getElementById('idPedido');
       
-      document.getElementById('contenedorPedido').innerHTML = "<p>Cargando datos del pedido...</p>";
+      try {
+        const response = await fetch(`${WEB_APP_URL}?action=listarPendientes`);
+        const ids = await response.json();
+        
+        if (Array.isArray(ids) && ids.length > 0) {
+          datalist.innerHTML = ""; // Limpiar
+          ids.forEach(id => {
+            let option = document.createElement('option');
+            option.value = id;
+            datalist.appendChild(option);
+          });
+          input.placeholder = "Escribe para filtrar o selecciona...";
+        } else {
+          input.placeholder = "No hay pedidos pendientes hoy ⚡";
+        }
+      } catch (error) {
+        console.error("Error al listar pendientes:", error);
+        input.placeholder = "Error al cargar sugerencias.";
+      }
+    }
+
+    async function cargarPedido() {
+      const id = document.getElementById('idPedido').value.trim();
+      if(!id) return alert("Por favor escribe o selecciona un ID válido.");
+      
+      document.getElementById('contenedorPedido').innerHTML = "<div class='status-msg'>⏳ Cargando detalles del pedido...</div>";
+      tg.MainButton.hide();
       
       try {
         const response = await fetch(`${WEB_APP_URL}?action=obtenerPedido&id=${id}`);
         pedidoActual = await response.json();
         
         if (!pedidoActual.items || pedidoActual.items.length === 0) {
-          document.getElementById('contenedorPedido').innerHTML = "<p>❌ No se encontraron ítems pendientes para este ID.</p>";
-          tg.MainButton.hide();
+          document.getElementById('contenedorPedido').innerHTML = "<div class='status-msg'>❌ No se encontraron ítems pendientes para este ID.</div>";
           return;
         }
         
         renderizarPedido();
       } catch (error) {
-        document.getElementById('contenedorPedido').innerHTML = "<p>❌ Error al conectar con el servidor.</p>";
+        document.getElementById('contenedorPedido').innerHTML = "<div class='status-msg'>❌ Error al conectar con Google Sheets.</div>";
       }
     }
 
@@ -101,11 +141,11 @@
             <div class="item-detail">${item.detalle}</div>
             <div class="qty-inputs">
               <div>
-                <label style="font-size:0.8em;">Solicitado</label>
-                <input type="number" value="${item.solicitado}" disabled>
+                <label style="font-size:0.8em; color: gray;">Solicitado</label>
+                <input type="number" value="${item.solicitado}" disabled style="background-color: rgba(0,0,0,0.05);">
               </div>
               <div>
-                <label style="font-size:0.8em;">Autorizar</label>
+                <label style="font-size:0.8em; font-weight: bold;">Autorizar</label>
                 <input type="number" id="autorizado-${index}" data-codigo="${item.codigo}" value="${item.solicitado}">
               </div>
             </div>
@@ -116,7 +156,7 @@
       html += `</div>`;
       document.getElementById('contenedorPedido').innerHTML = html;
       
-      // Mostrar el botón nativo de Telegram abajo para Guardar
+      // Mostrar y configurar el botón azul inferior nativo de Telegram
       tg.MainButton.setText("✅ AUTORIZAR PEDIDO");
       tg.MainButton.show();
       tg.MainButton.onClick(guardarAutorizacion);
@@ -149,11 +189,13 @@
           document.getElementById('contenedorPedido').innerHTML = "";
           document.getElementById('idPedido').value = "";
           tg.MainButton.hide();
+          // Recargar la lista de pendientes por si quedan más órdenes
+          obtenerPedidosPendientes();
         } else {
           alert("⚠️ " + resultado.message);
         }
       } catch (error) {
-        alert("❌ Error al procesar el guardado.");
+        alert("❌ Error de red al procesar el guardado.");
       } finally {
         tg.MainButton.hideProgress();
       }
