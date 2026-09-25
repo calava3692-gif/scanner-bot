@@ -5,13 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Iniciar Sesión - Mi PWA</title>
 
-  <!-- Vinculación del Manifest -->
-  <link rel="manifest" href="manifest.json">
+  <!-- Vinculación del Manifest con ruta relativa para GitHub Pages -->
+  <link rel="manifest" href="./manifest.json">
 
   <!-- Configuración de color para la barra de estado -->
   <meta name="theme-color" content="#2196f3">
 
-  <!-- Configuración para iOS (Safari) -->
+  <!-- Configuración para Android / iOS PWA -->
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -106,7 +107,7 @@
     .btn-submit:hover {
       background-color: #1976d2;
     }
-    
+
     .btn-submit:disabled {
       background-color: #90caf9;
       cursor: not-allowed;
@@ -178,14 +179,14 @@
 
   <script>
     // ==========================================
-    // REEMPLAZA ESTA URL CON TU SCRIPT DE GOOGLE
+    // URL DEL SCRIPT DE GOOGLE APPS SCRIPT
     // ==========================================
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyAIVohR2lA9sqo0-vQwPWNwzosCmjc-Tln-wxFp3Vh2sqZ1dNqCJr0KXoOfOx8qEIbfw/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzo8zJ53vdBsDoG_Wm0gCrsYcIBQ2gpDjt1EG1fvmI3rQfS7yUenMuE3lPabiikL7r9SA/exec";
 
-    // 1. Registro del Service Worker para PWA
+    // 1. Registro del Service Worker corregido para subdirectorios de GitHub Pages (./sw.js)
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
+        navigator.serviceWorker.register('./sw.js')
           .then((reg) => console.log('SW registrado en:', reg.scope))
           .catch((err) => console.error('Error al registrar SW:', err));
       });
@@ -209,7 +210,7 @@
       installBtn.hidden = true;
     });
 
-    // 3. Manejo interactivo del formulario de Login con Google Sheets
+    // 3. Manejo del formulario de Login con envío de datos a Google Sheets
     const loginForm = document.getElementById('login-form');
     const alertBox = document.getElementById('alert');
     const btnIngresar = document.getElementById('btn-ingresar');
@@ -220,7 +221,7 @@
       const user = document.getElementById('username').value;
       const pass = document.getElementById('password').value;
 
-      // Deshabilitar botón y mostrar estado de carga
+      // Estado de carga en interfaz
       btnIngresar.disabled = true;
       btnIngresar.textContent = "Verificando...";
       alertBox.style.display = 'none';
@@ -243,11 +244,11 @@
         if (result.success) {
           showAlert("¡Inicio de sesión exitoso! Redirigiendo...", "success");
           setTimeout(() => {
-            // Cambia 'menu.html' por el nombre del archivo al que quieras redirigir
-            window.location.href = 'menu.html'; 
+            // Cambia 'autorizar.html' por la página destino correspondiente
+            window.location.href = 'autorizar.html'; 
           }, 1200);
         } else {
-          showAlert(result.message, "error");
+          showAlert(result.message || "Usuario o contraseña incorrectos.", "error");
           btnIngresar.disabled = false;
           btnIngresar.textContent = "Ingresar";
         }
