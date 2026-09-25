@@ -98,10 +98,18 @@
       cursor: pointer;
       transition: background-color 0.2s;
       margin-top: 8px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
 
     .btn-submit:hover {
       background-color: #1976d2;
+    }
+    
+    .btn-submit:disabled {
+      background-color: #90caf9;
+      cursor: not-allowed;
     }
 
     /* Botón de instalación PWA */
@@ -159,7 +167,7 @@
         <input type="password" id="password" placeholder="••••••••" required>
       </div>
 
-      <button type="submit" class="btn-submit">Ingresar</button>
+      <button type="submit" class="btn-submit" id="btn-ingresar">Ingresar</button>
     </form>
 
     <div id="alert" class="alert-msg"></div>
@@ -169,6 +177,11 @@
   </main>
 
   <script>
+    // ==========================================
+    // REEMPLAZA ESTA URL CON TU SCRIPT DE GOOGLE
+    // ==========================================
+    const SCRIPT_URL = "URL_DE_TU_GOOGLE_APPS_SCRIPT_AQUI";
+
     // 1. Registro del Service Worker para PWA
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
@@ -196,25 +209,53 @@
       installBtn.hidden = true;
     });
 
-    // 3. Manejo interactivo del formulario de Login (Prueba Visual)
+    // 3. Manejo interactivo del formulario de Login con Google Sheets
     const loginForm = document.getElementById('login-form');
     const alertBox = document.getElementById('alert');
+    const btnIngresar = document.getElementById('btn-ingresar');
 
-    loginForm.addEventListener('submit', (e) => {
+    loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       
       const user = document.getElementById('username').value;
       const pass = document.getElementById('password').value;
 
-      // Validación temporal para pruebas de interfaz
-      if (user === "admin" && pass === "1234") {
-        showAlert("¡Inicio de sesión exitoso! Redirigiendo...", "success");
-        setTimeout(() => {
-          // Aquí redirigiremos al panel o chat del bot más adelante
-          alert("Navegando a la pantalla principal...");
-        }, 1200);
-      } else {
-        showAlert("Usuario o contraseña incorrectos", "error");
+      // Deshabilitar botón y mostrar estado de carga
+      btnIngresar.disabled = true;
+      btnIngresar.textContent = "Verificando...";
+      alertBox.style.display = 'none';
+
+      try {
+        const response = await fetch(SCRIPT_URL, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'login',
+            username: user,
+            password: pass
+          }),
+          headers: {
+            'Content-Type': 'text/plain;charset=utf-8'
+          }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          showAlert("¡Inicio de sesión exitoso! Redirigiendo...", "success");
+          setTimeout(() => {
+            // Cambia 'menu.html' por el nombre del archivo al que quieras redirigir
+            window.location.href = 'menu.html'; 
+          }, 1200);
+        } else {
+          showAlert(result.message, "error");
+          btnIngresar.disabled = false;
+          btnIngresar.textContent = "Ingresar";
+        }
+
+      } catch (error) {
+        showAlert("Error de conexión con el servidor.", "error");
+        btnIngresar.disabled = false;
+        btnIngresar.textContent = "Ingresar";
       }
     });
 
