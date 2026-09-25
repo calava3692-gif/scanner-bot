@@ -190,7 +190,7 @@
         navigator.serviceWorker.register('./sw.js')
           .then((reg) => {
             console.log('SW registrado en:', reg.scope);
-            reg.update(); // Forzar actualización del SW si hay cambios
+            reg.update();
           })
           .catch((err) => console.error('Error al registrar SW:', err));
       });
@@ -222,8 +222,8 @@
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       
-      const user = document.getElementById('username').value;
-      const pass = document.getElementById('password').value;
+      const user = document.getElementById('username').value.trim();
+      const pass = document.getElementById('password').value.trim();
 
       // Estado de carga en interfaz
       btnIngresar.disabled = true;
@@ -231,17 +231,26 @@
       alertBox.style.display = 'none';
 
       try {
-        const payload = JSON.stringify({
+        // Parametrización doble (URL query + Body JSON) para garantizar compatibilidad total
+        const queryParams = new URLSearchParams({
           action: 'login',
           username: user,
-          password: pass
+          password: pass,
+          _: Date.now()
         });
 
-        const urlConCacheBuster = `${SCRIPT_URL}?_=${Date.now()}`;
+        const urlConParametros = `${SCRIPT_URL}?${queryParams.toString()}`;
 
-        const response = await fetch(urlConCacheBuster, {
+        const response = await fetch(urlConParametros, {
           method: 'POST',
-          body: payload,
+          headers: {
+            'Content-Type': 'text/plain;charset=utf-8'
+          },
+          body: JSON.stringify({
+            action: 'login',
+            username: user,
+            password: pass
+          }),
           redirect: 'follow'
         });
 
@@ -275,6 +284,7 @@
         btnIngresar.textContent = "Ingresar";
       }
     });
+
     function showAlert(message, type) {
       alertBox.textContent = message;
       alertBox.className = `alert-msg alert-${type}`;
