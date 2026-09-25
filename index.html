@@ -227,6 +227,43 @@
       alertBox.style.display = 'none';
 
       try {
+        // Usamos URLSearchParams para asegurar compatibilidad total con Apps Script
+        const params = new URLSearchParams();
+        params.append('action', 'login');
+        params.append('username', user);
+        params.append('password', pass);
+
+        const response = await fetch(SCRIPT_URL, {
+          method: 'POST',
+          body: params
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          showAlert("¡Inicio de sesión exitoso! Redirigiendo...", "success");
+          setTimeout(() => {
+            window.location.href = 'autorizar.html'; 
+          }, 1200);
+        } else {
+          showAlert(result.message || "Usuario o contraseña incorrectos.", "error");
+          btnIngresar.disabled = false;
+          btnIngresar.textContent = "Ingresar";
+        }
+
+      } catch (error) {
+        showAlert("Error de conexión con el servidor.", "error");
+        btnIngresar.disabled = false;
+        btnIngresar.textContent = "Ingresar";
+      }
+    });
+
+      // Estado de carga en interfaz
+      btnIngresar.disabled = true;
+      btnIngresar.textContent = "Verificando...";
+      alertBox.style.display = 'none';
+
+      try {
         const response = await fetch(SCRIPT_URL, {
           method: 'POST',
           body: JSON.stringify({
