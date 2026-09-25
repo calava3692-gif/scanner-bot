@@ -107,7 +107,6 @@
     let materialesGlobal = [];
 
     document.addEventListener("DOMContentLoaded", () => {
-      // Proteger la ruta si no hay sesión iniciada
       if (!localStorage.getItem('sesionPWA')) { 
         window.location.href = 'index.html'; 
         return; 
@@ -115,24 +114,16 @@
       cargarMateriales();
     });
 
+    // Petición clásica GET para listar los datos sin fallos de redirección
     async function cargarMateriales() {
       try {
-        // Hacemos la petición a través de POST para evitar limpieza de URL por Google
-        const payload = JSON.stringify({ action: "listarMateriales" });
-        
-        const respuesta = await fetch(SCRIPT_URL, {
-          method: "POST",
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: payload,
-          redirect: "follow" // Fundamental en Google Apps Script
-        });
-        
+        const respuesta = await fetch(`${SCRIPT_URL}?action=listarMateriales&_=${Date.now()}`);
         const rawText = await respuesta.text();
         materialesGlobal = JSON.parse(rawText);
         
         renderizarLista(materialesGlobal);
       } catch (error) {
-        console.error("Error completo al cargar:", error);
+        console.error("Error al cargar:", error);
         document.getElementById("loading").innerText = "❌ Error de conexión al cargar los datos.";
       }
     }
@@ -142,7 +133,7 @@
       const contenedor = document.getElementById("lista-materiales");
       contenedor.innerHTML = "";
 
-      if (datos.length === 0) {
+      if (!Array.isArray(datos) || datos.length === 0) {
         contenedor.innerHTML = "<p style='text-align:center;'>No se encontraron materiales en el catálogo.</p>";
         return;
       }
@@ -153,7 +144,6 @@
         const card = document.createElement("div");
         card.className = "material-card";
         
-        // Cuidar que no se rompan las comillas en el onclick inyectando variables escapadas de manera limpia
         card.innerHTML = `
           <div class="mat-header">
             <span>${mat.codigo}</span>
@@ -179,7 +169,6 @@
       renderizarLista(filtrados);
     }
 
-    // Funciones de la Ventana Modal
     function abrirModalDesdeBtn(boton) {
       document.getElementById("mod-fila").value = boton.getAttribute("data-fila");
       document.getElementById("mod-codigo").value = boton.getAttribute("data-codigo");
@@ -196,6 +185,7 @@
       document.getElementById("editModal").style.display = "none";
     }
 
+    // Petición clásica POST para guardar los cambios de edición
     async function guardarCambios() {
       const btn = document.getElementById("btnSave");
       btn.innerText = "Guardando...";
@@ -224,7 +214,6 @@
         if (resultado.success) {
           alert("¡Material actualizado exitosamente!");
           cerrarModal();
-          // Mostrar loading y recargar lista actualizada
           document.getElementById("lista-materiales").innerHTML = "";
           document.getElementById("loading").style.display = "block";
           cargarMateriales(); 
