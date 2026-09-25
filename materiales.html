@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Materiales - Scanner Bot</title>
+  
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+    body { background-color: #f4f6f9; color: #333; }
+    
+    /* Navbar */
+    .topbar { background-color: #2196f3; color: white; padding: 15px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+    .btn-back { background: rgba(255,255,255,0.2); color: white; border: 1px solid white; padding: 6px 12px; border-radius: 6px; cursor: pointer; text-decoration: none; font-size: 14px; }
+    
+    .container { padding: 15px; max-width: 900px; margin: auto; }
+    
+    /* Buscador */
+    .search-box { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; }
+
+    /* Tarjetas/Tabla Móvil */
+    .material-card { background: white; border-radius: 8px; padding: 15px; margin-bottom: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 8px; }
+    .mat-header { display: flex; justify-content: space-between; font-weight: bold; color: #1976d2; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+    .mat-body { font-size: 14px; color: #555; }
+    .badge-ok { background: #4caf50; color: white; padding: 3px 8px; border-radius: 12px; font-size: 12px; }
+    .badge-no { background: #f44336; color: white; padding: 3px 8px; border-radius: 12px; font-size: 12px; }
+    .btn-edit { background: #ff9800; color: white; border: none; padding: 8px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 5px; }
+    
+    /* Modal */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 100; padding: 15px; }
+    .modal-content { background: white; width: 100%; max-width: 400px; border-radius: 10px; padding: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+    .modal-header { font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #2196f3; }
+    
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #555; }
+    .form-group input[type="text"], .form-group input[type="number"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 15px; }
+    .form-group input[readonly] { background-color: #eee; color: #777; }
+    .checkbox-group { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 15px; }
+    .checkbox-group input { width: 20px; height: 20px; }
+    
+    .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+    .btn-save { flex: 1; background: #2196f3; color: white; border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+    .btn-cancel { flex: 1; background: #e0e0e0; color: #333; border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+
+    #loading { text-align: center; padding: 20px; font-weight: bold; color: #666; }
+  </style>
+</head>
+<body>
+
+  <nav class="topbar">
+    <a href="panel.html" class="btn-back">⬅ Volver</a>
+    <div style="font-weight: bold;">Catálogo de Materiales</div>
+  </nav>
+
+  <main class="container">
+    <input type="text" id="searchInput" class="search-box" placeholder="🔍 Buscar por código o detalle..." onkeyup="filtrarMateriales()">
+    
+    <div id="loading">Cargando catálogo...</div>
+    <div id="lista-materiales"></div>
+  </main>
+
+  <!-- Ventana Modal de Edición -->
+  <div class="modal-overlay" id="editModal">
+    <div class="modal-content">
+      <div class="modal-header">Editar Material</div>
+      
+      <input type="hidden" id="mod-fila">
+      
+      <div class="form-group">
+        <label>Código</label>
+        <input type="text" id="mod-codigo" readonly>
+      </div>
+      <div class="form-group">
+        <label>Detalle</label>
+        <input type="text" id="mod-detalle" readonly>
+      </div>
+      <div class="form-group">
+        <label>Cantidad Base</label>
+        <input type="number" id="mod-cantidad">
+      </div>
+      <div class="form-group">
+        <label>Tipo (Equipo/Material)</label>
+        <input type="text" id="mod-tipo">
+      </div>
+      <div class="form-group">
+        <label>Observación</label>
+        <input type="text" id="mod-obs">
+      </div>
+      
+      <label class="checkbox-group">
+        <input type="checkbox" id="mod-disponible"> Material Disponible
+      </label>
+
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="cerrarModal()">Cancelar</button>
+        <button class="btn-save" onclick="guardarCambios()" id="btnSave">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzIhkMCH3oIUSnPMaQOgp2KgIaZzPL90YfcYP0gD3RJlytfHhJELsDEi5cpXKFba3hUwQ/exec";
+    let materialesGlobal = [];
+
+    document.addEventListener("DOMContentLoaded", () => {
+      if (!localStorage.getItem('sesionPWA')) { window.location.href = 'index.html'; }
+      cargarMateriales();
+    });
+
+    async function cargarMateriales() {
+      try {
+        const respuesta = await fetch(`${SCRIPT_URL}?action=listarMateriales`);
+        materialesGlobal = await respuesta.json();
+        renderizarLista(materialesGlobal);
+      } catch (error) {
+        document.getElementById("loading").innerText = "Error al cargar los datos.";
+      }
+    }
+
+    function renderizarLista(datos) {
+      document.getElementById("loading").style.display = "none";
+      const contenedor = document.getElementById("lista-materiales");
+      contenedor.innerHTML = "";
+
+      datos.forEach(mat => {
+        const estadoHTML = mat.disponible ? '<span class="badge-ok">Disponible</span>' : '<span class="badge-no">Agotado</span>';
+        
+        const card = document.createElement("div");
+        card.className = "material-card";
+        card.innerHTML = `
+          <div class="mat-header">
+            <span>${mat.codigo}</span>
+            ${estadoHTML}
+          </div>
+          <div class="mat-body">
+            <strong>${mat.detalle}</strong><br>
+            Tipo: ${mat.tipo} | Cant. Base: ${mat.cantidadBase}<br>
+            <small>Obs: ${mat.observacion || "Ninguna"}</small>
+          </div>
+          <button class="btn-edit" onclick="abrirModal(${mat.fila}, '${mat.codigo}', '${mat.detalle}', '${mat.cantidadBase}', '${mat.tipo}', ${mat.disponible}, '${mat.observacion || ""}')">⚙️ Editar</button>
+        `;
+        contenedor.appendChild(card);
+      });
+    }
+
+    function filtrarMateriales() {
+      const texto = document.getElementById("searchInput").value.toLowerCase();
+      const filtrados = materialesGlobal.filter(m => 
+        m.codigo.toLowerCase().includes(texto) || 
+        m.detalle.toLowerCase().includes(texto)
+      );
+      renderizarLista(filtrados);
+    }
+
+    // Funciones del Modal
+    function abrirModal(fila, codigo, detalle, cantidad, tipo, disponible, obs) {
+      document.getElementById("mod-fila").value = fila;
+      document.getElementById("mod-codigo").value = codigo;
+      document.getElementById("mod-detalle").value = detalle;
+      document.getElementById("mod-cantidad").value = cantidad;
+      document.getElementById("mod-tipo").value = tipo;
+      document.getElementById("mod-disponible").checked = disponible;
+      document.getElementById("mod-obs").value = obs;
+      
+      document.getElementById("editModal").style.display = "flex";
+    }
+
+    function cerrarModal() {
+      document.getElementById("editModal").style.display = "none";
+    }
+
+    async function guardarCambios() {
+      const btn = document.getElementById("btnSave");
+      btn.innerText = "Guardando...";
+      btn.disabled = true;
+
+      const payload = {
+        action: "actualizarMaterial",
+        fila: parseInt(document.getElementById("mod-fila").value),
+        codigo: document.getElementById("mod-codigo").value,
+        cantidadBase: document.getElementById("mod-cantidad").value,
+        tipo: document.getElementById("mod-tipo").value,
+        observacion: document.getElementById("mod-obs").value,
+        disponible: document.getElementById("mod-disponible").checked
+      };
+
+      try {
+        const response = await fetch(SCRIPT_URL, {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        const resultado = await response.json();
+        
+        if (resultado.success) {
+          alert("¡Material actualizado!");
+          cerrarModal();
+          document.getElementById("loading").style.display = "block";
+          document.getElementById("lista-materiales").innerHTML = "";
+          cargarMateriales(); // Recargar datos para ver el cambio
+        } else {
+          alert(resultado.message);
+        }
+      } catch (e) {
+        alert("Error de conexión");
+      }
+      
+      btn.innerText = "Guardar";
+      btn.disabled = false;
+    }
+  </script>
+</body>
+</html>
