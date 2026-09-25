@@ -43,6 +43,7 @@
       border: 1px solid rgba(255, 255, 255, 0.05);
     }
 
+    /* Encabezado con título a la izquierda y botón refresh a la derecha */
     .header-title {
       font-size: 18px;
       font-weight: bold;
@@ -50,7 +51,36 @@
       margin-bottom: 14px;
       display: flex;
       align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
       gap: 8px;
+    }
+
+    /* Botón de Refresh Superior */
+    .btn-refresh {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+      font-size: 16px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s, transform 0.3s ease;
+    }
+
+    .btn-refresh:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-refresh:active {
+      transform: rotate(180deg);
     }
 
     /* Grid de Encabezado */
@@ -194,9 +224,15 @@
 
   <div class="container">
     <div class="card">
+      <!-- Cabecera con Botón Refresh -->
       <div class="header-title">
-        <span>📦</span>
-        <span>Autorización de Pedidos</span>
+        <div class="header-left">
+          <span>📦</span>
+          <span>Autorización de Pedidos</span>
+        </div>
+        <button class="btn-refresh" onclick="cargarPendientes()" title="Actualizar lista">
+          🔄
+        </button>
       </div>
 
       <!-- Datos de la Solicitud -->
@@ -264,14 +300,10 @@
     // ==========================================
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzo8zJ53vdBsDoG_Wm0gCrsYcIBQ2gpDjt1EG1fvmI3rQfS7yUenMuE3lPabiikL7r9SA/exec"; 
 
-    // Al iniciar la página, cargar automáticamente los pedidos pendientes
     document.addEventListener("DOMContentLoaded", () => {
       cargarPendientes();
     });
 
-    /**
-     * Limpia los campos del formulario
-     */
     function limpiarFormulario() {
       document.getElementById('usuario-val').value = '';
       document.getElementById('fecha-val').value = '';
@@ -290,7 +322,6 @@
       limpiarFormulario();
       
       try {
-        // Se añade timestamp (&t=...) para evitar que el navegador use una respuesta en caché
         const response = await fetch(SCRIPT_URL + "?action=listarPendientes&t=" + Date.now());
         const idsPendientes = await response.json();
         
@@ -310,7 +341,6 @@
           select.appendChild(opt);
         });
 
-        // Habilitar botón y cargar el primer elemento disponible automáticamente
         document.getElementById('btn-autorizar').disabled = false;
         await cargarSolicitud();
 
@@ -333,14 +363,12 @@
       const estadoBadge = document.getElementById('estado-badge');
       const tbody = document.getElementById('items-body');
 
-      // Interfaz de carga visual
       estadoBadge.textContent = "Cargando...";
       estadoBadge.style.background = "rgba(255, 255, 255, 0.1)";
       estadoBadge.style.color = "#8b9dad";
       tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Obteniendo datos de la solicitud...</td></tr>';
       
       try {
-        // Anti-caché mediante timestamp
         const response = await fetch(SCRIPT_URL + "?action=obtenerPedido&id=" + idSeleccionado + "&t=" + Date.now());
         const data = await response.json();
 
@@ -349,17 +377,15 @@
           return;
         }
 
-        // Llenar datos de encabezado
+        // Llenar usuario y fecha/hora enviadas desde Sheets
         document.getElementById('usuario-val').value = data.usuario || 'N/A';
-        
-        const now = new Date();
-        document.getElementById('fecha-val').value = now.toLocaleDateString('es-ES') + " " + now.toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'});
+        document.getElementById('fecha-val').value = data.fecha || 'N/A'; // <-- Hora/Fecha del pedido
 
         estadoBadge.textContent = "Pendiente";
         estadoBadge.style.color = "#ffb74d";
         estadoBadge.style.background = "rgba(255, 183, 77, 0.2)";
 
-        // Llenar la tabla de productos
+        // Llenar productos
         tbody.innerHTML = '';
         if (data.items && data.items.length > 0) {
           data.items.forEach(item => {
@@ -384,7 +410,7 @@
     }
 
     /**
-     * Envía la autorización al endpoint POST y actualiza los pendientes
+     * Envía la autorización al endpoint POST
      */
     async function autorizarPedido() {
       const idSeleccionado = document.getElementById('solicitud-select').value;
@@ -395,7 +421,6 @@
       btn.innerHTML = '<span>⏳</span><span>Procesando...</span>';
       btn.disabled = true;
 
-      // Recopilar cantidades modificadas
       const inputs = document.querySelectorAll('.input-qty');
       const itemsAutorizados = [];
       
@@ -424,8 +449,6 @@
 
         if (result.success) {
           alert(result.message);
-          
-          // Refrescar automáticamente la lista de pendientes
           await cargarPendientes();
         } else {
           alert("Error: " + result.message);
