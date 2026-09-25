@@ -3,181 +3,434 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Autorizador de Pedidos</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <title>Autorizar Pedidos</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2196f3">
+
   <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background-color: var(--tg-theme-bg-color, #ffffff);
-      color: var(--tg-theme-text-color, #000000);
-      margin: 15px;
+      background-color: #0d1418;
+      background-image: radial-gradient(#1c2730 1px, transparent 0);
+      background-size: 16px 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 16px;
     }
-    .search-box { margin-bottom: 20px; }
-    input, button {
-      width: 100%; padding: 12px; margin-top: 5px; border-radius: 8px;
-      border: 1px solid var(--tg-theme-hint-color, #ccc); box-sizing: border-box; font-size: 16px;
+
+    .container {
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
     }
-    input { background-color: var(--tg-theme-bg-color, #ffffff); color: var(--tg-theme-text-color, #000000); }
-    button {
-      background-color: var(--tg-theme-button-color, #2481cc);
-      color: var(--tg-theme-button-text-color, #ffffff); font-weight: bold; border: none; cursor: pointer;
-    }
+
     .card {
-      border: 1px solid var(--tg-theme-secondary-bg-color, #f0f0f0);
-      background-color: var(--tg-theme-secondary-bg-color, #f9f9f9); padding: 15px; border-radius: 10px; margin-bottom: 10px;
+      background: #17212b;
+      color: #f5f5f5;
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.05);
     }
-    .item-row { margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid rgba(0, 0, 0, 0.1); }
-    .item-detail { font-size: 0.9em; color: var(--tg-theme-hint-color, #666); }
-    .qty-inputs { display: flex; gap: 10px; margin-top: 5px; }
-    .qty-inputs div { flex: 1; }
-    .status-msg { text-align: center; padding: 10px; color: var(--tg-theme-hint-color, #666); }
-    .tecnico-info { font-size: 0.95em; color: var(--tg-theme-hint-color, #666); margin: 5px 0 15px 0; }
+
+    .header-title {
+      font-size: 18px;
+      font-weight: bold;
+      color: #ffffff;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Grid de Encabezado */
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+
+    .info-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .info-item label {
+      color: #8b9dad;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .info-item select, .info-item input {
+      background: #0e1621;
+      color: #64b5f6;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 8px;
+      border-radius: 6px;
+      font-size: 13px;
+      outline: none;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #8b9dad;
+      font-weight: bold;
+      width: fit-content;
+    }
+
+    /* Tabla de Productos */
+    .table-container {
+      overflow-x: auto;
+      margin-bottom: 16px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      text-align: left;
+    }
+
+    th {
+      background: rgba(255, 255, 255, 0.05);
+      color: #8b9dad;
+      padding: 10px 8px;
+      font-weight: 600;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    td {
+      padding: 10px 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      color: #e1e9f0;
+    }
+
+    .input-qty {
+      width: 70px;
+      background: #0e1621;
+      border: 1px solid #2b5278;
+      color: #fff;
+      padding: 6px;
+      border-radius: 6px;
+      text-align: center;
+      font-size: 13px;
+    }
+
+    .input-qty:focus {
+      border-color: #64b5f6;
+      outline: none;
+    }
+
+    /* Botones de Acción */
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .btn-primary {
+      background: #2b5278;
+      color: #ffffff;
+      border: none;
+      padding: 14px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background 0.2s, transform 0.1s;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+
+    .btn-primary:hover {
+      background: #366596;
+    }
+
+    .btn-primary:disabled {
+      background: #394756;
+      color: #8b9dad;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: #394756;
+      color: #ffffff;
+      border: none;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
   </style>
 </head>
 <body>
 
-  <h3>📋 Autorización de Pedidos</h3>
-  
-  <div class="search-box" id="bloqueBusqueda">
-    <label for="idPedido">Escribe o selecciona un ID Pendiente:</label>
-    <input type="text" id="idPedido" list="listaPendientes" placeholder="Buscando pedidos pendientes..." autocomplete="off">
-    <datalist id="listaPendientes"></datalist>
-    <button onclick="ejecutarBusquedaManual()" style="margin-top: 10px;">🔍 Buscar Pedido</button>
+  <div class="container">
+    <div class="card">
+      <div class="header-title">
+        <span>📦</span>
+        <span>Autorización de Pedidos</span>
+      </div>
+
+      <!-- Datos de la Solicitud -->
+      <div class="info-grid">
+        <div class="info-item">
+          <label for="solicitud-select">Solicitud (Pendientes):</label>
+          <select id="solicitud-select" onchange="cargarSolicitud()">
+            <option>Cargando...</option>
+          </select>
+        </div>
+
+        <div class="info-item">
+          <label>Fecha de Consulta:</label>
+          <input type="text" id="fecha-val" value="" readonly>
+        </div>
+
+        <div class="info-item">
+          <label>Usuario (Técnico):</label>
+          <input type="text" id="usuario-val" value="" readonly>
+        </div>
+
+        <div class="info-item">
+          <label>Estado:</label>
+          <span class="status-badge" id="estado-badge">---</span>
+        </div>
+      </div>
+
+      <!-- Tabla de Detalle -->
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Detalle</th>
+              <th>Solicitado</th>
+              <th>Autorizado</th>
+            </tr>
+          </thead>
+          <tbody id="items-body">
+            <tr>
+              <td colspan="4" style="text-align: center;">Cargando productos...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Botones de Acción -->
+      <div class="actions">
+        <button class="btn-primary" id="btn-autorizar" onclick="autorizarPedido()">
+          <span>📝</span>
+          <span>Autorizar Pedido</span>
+        </button>
+
+        <button class="btn-secondary" onclick="volverMenu()">
+          <span>⬅️</span>
+          <span>Volver al Menú</span>
+        </button>
+      </div>
+    </div>
   </div>
 
-  <div id="contenedorPedido"></div>
-
   <script>
-    const tg = window.Telegram.WebApp;
-    tg.expand(); 
+    // ==========================================
+    // CONFIGURACIÓN: URL DEL SCRIPT DE GOOGLE
+    // ==========================================
+    // Reemplaza esto con la URL que te da Google al implementar como "Aplicación Web"
+    const SCRIPT_URL = "https://script.google.com/macros/s/TU_ID_DE_DESPLIEGUE/exec"; 
 
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyX3fYLX951KbOe7rYzUf13IltukO7O4dI9oKWh0nQSBiSuU2v_L7DeW77yuX7oonxpfw/exec"; 
+    // Al iniciar la página, cargar automáticamente los pedidos pendientes
+    document.addEventListener("DOMContentLoaded", () => {
+      cargarPendientes();
+    });
 
-    let pedidoActual = null;
-
-    document.addEventListener("DOMContentLoaded", analizarEntrada);
-
-    function analizarEntrada() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const idParam = urlParams.get('id');
-      
-      if (idParam) {
-        document.getElementById('bloqueBusqueda').style.display = 'none';
-        cargarPedidoIndividual(idParam);
-      } else {
-        obtenerPedidosPendientes();
-      }
-    }
-
-    async function obtenerPedidosPendientes() {
-      const datalist = document.getElementById('listaPendientes');
-      const input = document.getElementById('idPedido');
-      try {
-        const response = await fetch(`${WEB_APP_URL}?action=listarPendientes`);
-        const ids = await response.json();
-        if (Array.isArray(ids) && ids.length > 0) {
-          datalist.innerHTML = "";
-          ids.forEach(id => {
-            let option = document.createElement('option');
-            option.value = id;
-            datalist.appendChild(option);
-          });
-          input.placeholder = "Escribe para filtrar o selecciona...";
-        } else {
-          input.placeholder = "No hay pedidos pendientes hoy ⚡";
-        }
-      } catch (error) {
-        input.placeholder = "Error al cargar sugerencias.";
-      }
-    }
-
-    function ejecutarBusquedaManual() {
-      const id = document.getElementById('idPedido').value.trim();
-      if(!id) return alert("Por favor escribe un ID válido.");
-      cargarPedidoIndividual(id);
-    }
-
-    async function cargarPedidoIndividual(id) {
-      document.getElementById('contenedorPedido').innerHTML = "<div class='status-msg'>⏳ Cargando detalles del pedido...</div>";
-      tg.MainButton.hide();
+    /**
+     * Llama al endpoint GET ?action=listarPendientes
+     */
+    async function cargarPendientes() {
+      const select = document.getElementById('solicitud-select');
+      select.innerHTML = '<option value="">Cargando pendientes...</option>';
       
       try {
-        const response = await fetch(`${WEB_APP_URL}?action=obtenerPedido&id=${id}`);
-        pedidoActual = await response.json();
+        const response = await fetch(SCRIPT_URL + "?action=listarPendientes");
+        const idsPendientes = await response.json();
         
-        if (!pedidoActual.items || pedidoActual.items.length === 0) {
-          document.getElementById('contenedorPedido').innerHTML = "<div class='status-msg'>❌ No se encontraron ítems pendientes para este ID.</div>";
+        select.innerHTML = ''; // Limpiar
+        
+        if (idsPendientes.length === 0) {
+          select.innerHTML = '<option value="">No hay pedidos pendientes</option>';
+          document.getElementById('items-body').innerHTML = '<tr><td colspan="4" style="text-align: center;">No hay información que mostrar</td></tr>';
+          document.getElementById('btn-autorizar').disabled = true;
           return;
         }
-        renderizarPedido();
+
+        idsPendientes.forEach(id => {
+          let opt = document.createElement('option');
+          opt.value = id;
+          opt.textContent = id;
+          select.appendChild(opt);
+        });
+
+        // Habilitar botón y cargar el primer elemento de la lista automáticamente
+        document.getElementById('btn-autorizar').disabled = false;
+        cargarSolicitud();
+
       } catch (error) {
-        document.getElementById('contenedorPedido').innerHTML = "<div class='status-msg'>❌ Error al conectar con Google Sheets.</div>";
+        alert("Error al conectar con Google Sheets: " + error.message);
+        select.innerHTML = '<option value="">Error de conexión</option>';
       }
     }
 
-    function renderizarPedido() {
-      let html = `
-        <div class="card">
-          <h4 style="margin: 0;">Solicitud: ${pedidoActual.id}</h4>
-          <div class="tecnico-info">👤 <strong>Técnico:</strong> ${pedidoActual.usuario || 'No especificado'}</div>
-      `;
+    /**
+     * Llama al endpoint GET ?action=obtenerPedido&id=XYZ
+     */
+    async function cargarSolicitud() {
+      const idSeleccionado = document.getElementById('solicitud-select').value;
+      if (!idSeleccionado) return;
+
+      const estadoBadge = document.getElementById('estado-badge');
+      const tbody = document.getElementById('items-body');
+
+      // Interfaz de carga visual
+      estadoBadge.textContent = "Cargando...";
+      estadoBadge.style.background = "rgba(255, 255, 255, 0.1)";
+      estadoBadge.style.color = "#8b9dad";
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Obteniendo datos de la solicitud...</td></tr>';
       
-      pedidoActual.items.forEach((item, index) => {
-        html += `
-          <div class="item-row">
-            <strong>${item.codigo}</strong>
-            <div class="item-detail">${item.detalle}</div>
-            <div class="qty-inputs">
-              <div>
-                <label style="font-size:0.8em; color: gray;">Solicitado</label>
-                <input type="number" value="${item.solicitado}" disabled style="background-color: rgba(0,0,0,0.05);">
-              </div>
-              <div>
-                <label style="font-size:0.8em; font-weight: bold;">Autorizar</label>
-                <input type="number" id="autorizado-${index}" value="${item.solicitado}">
-              </div>
-            </div>
-          </div>
-        `;
-      });
-      html += `</div>`;
-      document.getElementById('contenedorPedido').innerHTML = html;
-      
-      tg.MainButton.setText("✅ AUTORIZAR PEDIDO");
-      tg.MainButton.show();
-      tg.MainButton.onClick(guardarAutorizacion);
+      try {
+        const response = await fetch(SCRIPT_URL + "?action=obtenerPedido&id=" + idSeleccionado);
+        const data = await response.json();
+
+        if (data.error) {
+          alert("Error desde el servidor: " + data.error);
+          return;
+        }
+
+        // 1. Llenar encabezados con los datos devueltos por el backend
+        document.getElementById('usuario-val').value = data.usuario;
+        
+        const now = new Date();
+        document.getElementById('fecha-val').value = now.toLocaleDateString('es-ES') + " " + now.toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'});
+
+        estadoBadge.textContent = "Pendiente";
+        estadoBadge.style.color = "#ffb74d";
+        estadoBadge.style.background = "rgba(255, 183, 77, 0.2)";
+
+        // 2. Llenar tabla de ítems dinámicamente
+        tbody.innerHTML = '';
+        data.items.forEach(item => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${item.codigo}</td>
+            <td>${item.detalle}</td>
+            <td style="text-align: center;">${item.solicitado}</td>
+            <td style="text-align: center;">
+              <!-- Se inyecta el código en data-codigo para recuperarlo al guardar -->
+              <input type="number" class="input-qty" data-codigo="${item.codigo}" value="${item.solicitado}" min="0">
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+      } catch (error) {
+        alert("Error al cargar la solicitud: " + error.message);
+      }
     }
 
-    async function guardarAutorizacion() {
-      tg.MainButton.showProgress();
-      const itemsAEnviar = pedidoActual.items.map((item, index) => {
-        return {
-          codigo: item.codigo,
-          cantidad: document.getElementById(`autorizado-${index}`).value // <-- CORREGIDO: Volvió a "cantidad"
-        };
+    /**
+     * Envía la autorización al endpoint POST
+     */
+    async function autorizarPedido() {
+      const idSeleccionado = document.getElementById('solicitud-select').value;
+      if (!idSeleccionado) return;
+
+      const btn = document.getElementById('btn-autorizar');
+      const textOriginal = btn.innerHTML;
+      btn.innerHTML = '<span>⏳</span><span>Procesando...</span>';
+      btn.disabled = true;
+
+      // Recopilar información de la tabla leyendo las clases "input-qty"
+      const inputs = document.querySelectorAll('.input-qty');
+      const itemsAutorizados = [];
+      
+      inputs.forEach(input => {
+        itemsAutorizados.push({
+          codigo: input.getAttribute('data-codigo'),
+          cantidad: input.value
+        });
       });
 
-      const payload = { id: pedidoActual.id, items: itemsAEnviar };
+      // Construir el objeto JSON requerido por tu código GAS
+      const payload = {
+        id: idSeleccionado,
+        items: itemsAutorizados
+      };
 
       try {
-        const response = await fetch(WEB_APP_URL, {
+        // En Google Apps Script Web Apps, enviar como text/plain evita el bloqueo de CORS (Preflight)
+        const response = await fetch(SCRIPT_URL, {
           method: 'POST',
-          body: JSON.stringify(payload)
+          body: JSON.stringify(payload),
+          headers: {
+            'Content-Type': 'text/plain;charset=utf-8' 
+          }
         });
-        const resultado = await response.json();
-        
-        if(resultado.success) {
-          alert("🎉 " + resultado.message);
-          document.getElementById('contenedorPedido').innerHTML = "<div class='status-msg'>✅ Procesado correctamente. Puedes cerrar esta ventana.</div>";
-          tg.MainButton.hide();
+
+        const result = await response.json();
+
+        if (result.success) {
+          // Cambiar estado visualmente
+          const estadoBadge = document.getElementById('estado-badge');
+          estadoBadge.textContent = "Autorizado";
+          estadoBadge.style.color = "#43b581";
+          estadoBadge.style.background = "rgba(67, 181, 129, 0.2)";
+
+          alert(result.message); // Muestra el mensaje del backend (ej: "Pedido autorizado. Técnico notificado.")
+          
+          // Refrescar la lista de pendientes para que este ID desaparezca del combo box
+          cargarPendientes();
         } else {
-          alert("⚠️ " + resultado.message);
-          tg.MainButton.hideProgress();
+          alert("Error: " + result.message);
         }
+
       } catch (error) {
-        alert("❌ Error de red al guardar.");
-        tg.MainButton.hideProgress();
+        alert("Error de conexión al autorizar: " + error.message);
+      } finally {
+        // Restaurar estado del botón
+        btn.innerHTML = textOriginal;
+        btn.disabled = false;
       }
+    }
+
+    function volverMenu() {
+      window.history.back();
     }
   </script>
 </body>
