@@ -134,6 +134,7 @@
       font-size: 13px;
       text-align: center;
       display: none;
+      word-break: break-word;
     }
 
     .alert-error {
@@ -187,7 +188,10 @@
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
-          .then((reg) => console.log('SW registrado en:', reg.scope))
+          .then((reg) => {
+            console.log('SW registrado en:', reg.scope);
+            reg.update(); // Forzar actualización del SW si hay cambios
+          })
           .catch((err) => console.error('Error al registrar SW:', err));
       });
     }
@@ -232,12 +236,26 @@
         params.append('username', user);
         params.append('password', pass);
 
-        const response = await fetch(SCRIPT_URL, {
+        // Se agrega parámetro de timestamp para evitar que el navegador o SW usen caché
+        const urlConCacheBuster = `${SCRIPT_URL}?_=${Date.now()}`;
+
+        const response = await fetch(urlConCacheBuster, {
           method: 'POST',
-          body: params
+          body: params,
+          redirect: 'follow'
         });
 
-        const result = await response.json();
+        const rawText = await response.text();
+        console.log("Respuesta sin procesar del servidor:", rawText);
+
+        let result;
+        try {
+          result = JSON.parse(rawText);
+        } catch (jsonErr) {
+          throw new Error("El servidor devolvió un formato no válido. Respuesta: " + rawText.substring(0, 80));
+        }
+
+        console.log("Respuesta parseada:", result);
 
         if (result.success) {
           showAlert("¡Inicio de sesión exitoso! Redirigiendo...", "success");
@@ -245,13 +263,15 @@
             window.location.href = 'autorizar.html'; 
           }, 1200);
         } else {
-          showAlert(result.message || "Usuario o contraseña incorrectos.", "error");
+          // Muestra exactamente el mensaje de diagnóstico enviado por Apps Script
+          showAlert(result.message || "Credenciales incorrectas.", "error");
           btnIngresar.disabled = false;
           btnIngresar.textContent = "Ingresar";
         }
 
       } catch (error) {
-        showAlert("Error de conexión con el servidor.", "error");
+        console.error("Error en la petición:", error);
+        showAlert(error.message || "Error de conexión con el servidor.", "error");
         btnIngresar.disabled = false;
         btnIngresar.textContent = "Ingresar";
       }
