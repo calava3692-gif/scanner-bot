@@ -1,32 +1,470 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://unpkg.com/html5-qrcode"></script>
-    <style>
-        body { font-family: sans-serif; text-align: center; padding: 20px; }
-        #reader { width: 100%; max-width: 500px; margin: auto; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Autorizar Pedidos</title>
+  <meta name="theme-color" content="#2196f3">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: #0d1418;
+      background-image: radial-gradient(#1c2730 1px, transparent 0);
+      background-size: 16px 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 16px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .card {
+      background: #17212b;
+      color: #f5f5f5;
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    /* Encabezado con título a la izquierda y botón refresh a la derecha */
+    .header-title {
+      font-size: 18px;
+      font-weight: bold;
+      color: #ffffff;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Botón de Refresh Superior */
+    .btn-refresh {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+      font-size: 16px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s, transform 0.3s ease;
+    }
+
+    .btn-refresh:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-refresh:active {
+      transform: rotate(180deg);
+    }
+
+    /* Grid de Encabezado */
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+
+    .info-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .info-item label {
+      color: #8b9dad;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .info-item select, .info-item input {
+      background: #0e1621;
+      color: #64b5f6;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 8px;
+      border-radius: 6px;
+      font-size: 13px;
+      outline: none;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #8b9dad;
+      font-weight: bold;
+      width: fit-content;
+    }
+
+    /* Tabla de Productos */
+    .table-container {
+      overflow-x: auto;
+      margin-bottom: 16px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      text-align: left;
+    }
+
+    th {
+      background: rgba(255, 255, 255, 0.05);
+      color: #8b9dad;
+      padding: 10px 8px;
+      font-weight: 600;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    td {
+      padding: 10px 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      color: #e1e9f0;
+    }
+
+    .input-qty {
+      width: 70px;
+      background: #0e1621;
+      border: 1px solid #2b5278;
+      color: #fff;
+      padding: 6px;
+      border-radius: 6px;
+      text-align: center;
+      font-size: 13px;
+    }
+
+    .input-qty:focus {
+      border-color: #64b5f6;
+      outline: none;
+    }
+
+    /* Botones de Acción */
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .btn-primary {
+      background: #2b5278;
+      color: #ffffff;
+      border: none;
+      padding: 14px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background 0.2s, transform 0.1s;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+
+    .btn-primary:hover {
+      background: #366596;
+    }
+
+    .btn-primary:disabled {
+      background: #394756;
+      color: #8b9dad;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: #394756;
+      color: #ffffff;
+      border: none;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+  </style>
 </head>
 <body>
-    <h2>Escanear La Serie/QR</h2>
-    <div id="reader"></div>
-    <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-        const qr = new Html5Qrcode("reader");
 
-        qr.start(
-            { facingMode: "environment" },
-            { fps: 10, qrbox: 250 },
-            (text) => {
-                tg.sendData(text);
-                qr.stop();
-                tg.close();
-            }
-        );
-    </script>
+  <div class="container">
+    <div class="card">
+      <!-- Cabecera con Botón Refresh -->
+      <div class="header-title">
+        <div class="header-left">
+          <span>📦</span>
+          <span>Autorización de Pedidos</span>
+        </div>
+        <button class="btn-refresh" onclick="cargarPendientes()" title="Actualizar lista">
+          🔄
+        </button>
+      </div>
+
+      <!-- Datos de la Solicitud -->
+      <div class="info-grid">
+        <div class="info-item">
+          <label for="solicitud-select">Solicitud (Pendientes):</label>
+          <select id="solicitud-select" onchange="cargarSolicitud()">
+            <option>Cargando...</option>
+          </select>
+        </div>
+
+        <div class="info-item">
+          <label>Fecha de Consulta:</label>
+          <input type="text" id="fecha-val" value="" readonly>
+        </div>
+
+        <div class="info-item">
+          <label>Usuario (Técnico):</label>
+          <input type="text" id="usuario-val" value="" readonly>
+        </div>
+
+        <div class="info-item">
+          <label>Estado:</label>
+          <span class="status-badge" id="estado-badge">---</span>
+        </div>
+      </div>
+
+      <!-- Tabla de Detalle -->
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Detalle</th>
+              <th>Solicitado</th>
+              <th>Autorizado</th>
+            </tr>
+          </thead>
+          <tbody id="items-body">
+            <tr>
+              <td colspan="4" style="text-align: center;">Cargando productos...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Botones de Acción -->
+      <div class="actions">
+        <button class="btn-primary" id="btn-autorizar" onclick="autorizarPedido()">
+          <span>📝</span>
+          <span>Autorizar Pedido</span>
+        </button>
+
+        <button class="btn-secondary" onclick="volverMenu()">
+          <span>⬅️</span>
+          <span>Volver al Menú</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ==========================================
+    // CONFIGURACIÓN: URL DEL SCRIPT DE GOOGLE
+    // ==========================================
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxUO5BFVk_9gydDEnphoih7tOw9T9u9tRjxV8WJRzHz_Q2oIkkBKjhUiA1tX4Vwj6kR6Q/exec"; 
+
+    document.addEventListener("DOMContentLoaded", () => {
+      cargarPendientes();
+    });
+
+    function limpiarFormulario() {
+      document.getElementById('usuario-val').value = '';
+      document.getElementById('fecha-val').value = '';
+      const estadoBadge = document.getElementById('estado-badge');
+      estadoBadge.textContent = '---';
+      estadoBadge.style.color = '#8b9dad';
+      estadoBadge.style.background = 'rgba(255, 255, 255, 0.1)';
+    }
+
+    /**
+     * Llama al endpoint GET ?action=listarPendientes
+     */
+    async function cargarPendientes() {
+      const select = document.getElementById('solicitud-select');
+      select.innerHTML = '<option value="">Cargando pendientes...</option>';
+      limpiarFormulario();
+      
+      try {
+        const response = await fetch(SCRIPT_URL + "?action=listarPendientes&t=" + Date.now());
+        const idsPendientes = await response.json();
+        
+        select.innerHTML = ''; 
+        
+        if (!idsPendientes || idsPendientes.length === 0) {
+          select.innerHTML = '<option value="">No hay pedidos pendientes</option>';
+          document.getElementById('items-body').innerHTML = '<tr><td colspan="4" style="text-align: center;">No hay información que mostrar</td></tr>';
+          document.getElementById('btn-autorizar').disabled = true;
+          return;
+        }
+
+        idsPendientes.forEach(id => {
+          let opt = document.createElement('option');
+          opt.value = id;
+          opt.textContent = id;
+          select.appendChild(opt);
+        });
+
+        document.getElementById('btn-autorizar').disabled = false;
+        await cargarSolicitud();
+
+      } catch (error) {
+        alert("Error al conectar con Google Sheets: " + error.message);
+        select.innerHTML = '<option value="">Error de conexión</option>';
+      }
+    }
+
+    /**
+     * Llama al endpoint GET ?action=obtenerPedido&id=XYZ
+     */
+    async function cargarSolicitud() {
+      const idSeleccionado = document.getElementById('solicitud-select').value;
+      if (!idSeleccionado) {
+        limpiarFormulario();
+        return;
+      }
+
+      const estadoBadge = document.getElementById('estado-badge');
+      const tbody = document.getElementById('items-body');
+
+      estadoBadge.textContent = "Cargando...";
+      estadoBadge.style.background = "rgba(255, 255, 255, 0.1)";
+      estadoBadge.style.color = "#8b9dad";
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Obteniendo datos de la solicitud...</td></tr>';
+      
+      try {
+        const response = await fetch(SCRIPT_URL + "?action=obtenerPedido&id=" + idSeleccionado + "&t=" + Date.now());
+        const data = await response.json();
+
+        if (data.error) {
+          alert("Error desde el servidor: " + data.error);
+          return;
+        }
+
+        // Llenar usuario y fecha/hora enviadas desde Sheets
+        document.getElementById('usuario-val').value = data.usuario || 'N/A';
+        document.getElementById('fecha-val').value = data.fecha || 'N/A'; // <-- Hora/Fecha del pedido
+
+        estadoBadge.textContent = "Pendiente";
+        estadoBadge.style.color = "#ffb74d";
+        estadoBadge.style.background = "rgba(255, 183, 77, 0.2)";
+
+        // Llenar productos
+        tbody.innerHTML = '';
+        if (data.items && data.items.length > 0) {
+          data.items.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${item.codigo}</td>
+              <td>${item.detalle}</td>
+              <td style="text-align: center;">${item.solicitado}</td>
+              <td style="text-align: center;">
+                <input type="number" class="input-qty" data-codigo="${item.codigo}" value="${item.solicitado}" min="0">
+              </td>
+            `;
+            tbody.appendChild(tr);
+          });
+        } else {
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Sin productos en esta solicitud</td></tr>';
+        }
+
+      } catch (error) {
+        alert("Error al cargar la solicitud: " + error.message);
+      }
+    }
+
+    /**
+     * Envía la autorización al endpoint POST
+     */
+    async function autorizarPedido() {
+      const idSeleccionado = document.getElementById('solicitud-select').value;
+      if (!idSeleccionado) return;
+
+      const btn = document.getElementById('btn-autorizar');
+      const textOriginal = btn.innerHTML;
+      btn.innerHTML = '<span>⏳</span><span>Procesando...</span>';
+      btn.disabled = true;
+
+      const inputs = document.querySelectorAll('.input-qty');
+      const itemsAutorizados = [];
+      
+      inputs.forEach(input => {
+        itemsAutorizados.push({
+          codigo: input.getAttribute('data-codigo'),
+          cantidad: input.value
+        });
+      });
+
+      const payload = {
+        id: idSeleccionado,
+        items: itemsAutorizados
+      };
+
+      try {
+        const response = await fetch(SCRIPT_URL, {
+          method: 'POST',
+          body: JSON.stringify(payload),
+          headers: {
+            'Content-Type': 'text/plain;charset=utf-8' 
+          }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          alert(result.message);
+          await cargarPendientes();
+        } else {
+          alert("Error: " + result.message);
+        }
+
+      } catch (error) {
+        alert("Error de conexión al autorizar: " + error.message);
+      } finally {
+        btn.innerHTML = textOriginal;
+        btn.disabled = false;
+      }
+    }
+
+    function volverMenu() {
+      window.history.back();
+    }
+  </script>
 </body>
 </html>
