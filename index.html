@@ -250,9 +250,16 @@
         console.log("Respuesta parseada:", result);
 
         if (result.success) {
+          // NUEVO: Guardar la sesión en el navegador
+          localStorage.setItem('sesionPWA', JSON.stringify({
+            nombre: result.nombre,
+            username: result.username,
+            isAdmin: result.isAdmin
+          }));
+
           showAlert("¡Inicio de sesión exitoso! Redirigiendo...", "success");
           setTimeout(() => {
-            window.location.href = 'autorizar.html'; 
+            window.location.href = 'panel.html'; // Redirige al nuevo menú
           }, 1200);
         } else {
           showAlert(result.message || "Credenciales incorrectas.", "error");
