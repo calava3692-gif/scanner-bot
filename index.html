@@ -262,7 +262,6 @@
     // ==========================================
     // CONFIGURACIÓN: URL DEL SCRIPT DE GOOGLE
     // ==========================================
-    // Reemplaza esto con la URL que te da Google al implementar como "Aplicación Web"
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzo8zJ53vdBsDoG_Wm0gCrsYcIBQ2gpDjt1EG1fvmI3rQfS7yUenMuE3lPabiikL7r9SA/exec"; 
 
     // Al iniciar la página, cargar automáticamente los pedidos pendientes
@@ -271,19 +270,33 @@
     });
 
     /**
+     * Limpia los campos del formulario
+     */
+    function limpiarFormulario() {
+      document.getElementById('usuario-val').value = '';
+      document.getElementById('fecha-val').value = '';
+      const estadoBadge = document.getElementById('estado-badge');
+      estadoBadge.textContent = '---';
+      estadoBadge.style.color = '#8b9dad';
+      estadoBadge.style.background = 'rgba(255, 255, 255, 0.1)';
+    }
+
+    /**
      * Llama al endpoint GET ?action=listarPendientes
      */
     async function cargarPendientes() {
       const select = document.getElementById('solicitud-select');
       select.innerHTML = '<option value="">Cargando pendientes...</option>';
+      limpiarFormulario();
       
       try {
-        const response = await fetch(SCRIPT_URL + "?action=listarPendientes");
+        // Se añade timestamp (&t=...) para evitar que el navegador use una respuesta en caché
+        const response = await fetch(SCRIPT_URL + "?action=listarPendientes&t=" + Date.now());
         const idsPendientes = await response.json();
         
-        select.innerHTML = ''; // Limpiar
+        select.innerHTML = ''; 
         
-        if (idsPendientes.length === 0) {
+        if (!idsPendientes || idsPendientes.length === 0) {
           select.innerHTML = '<option value="">No hay pedidos pendientes</option>';
           document.getElementById('items-body').innerHTML = '<tr><td colspan="4" style="text-align: center;">No hay información que mostrar</td></tr>';
           document.getElementById('btn-autorizar').disabled = true;
@@ -297,9 +310,9 @@
           select.appendChild(opt);
         });
 
-        // Habilitar botón y cargar el primer elemento de la lista automáticamente
+        // Habilitar botón y cargar el primer elemento disponible automáticamente
         document.getElementById('btn-autorizar').disabled = false;
-        cargarSolicitud();
+        await cargarSolicitud();
 
       } catch (error) {
         alert("Error al conectar con Google Sheets: " + error.message);
@@ -312,7 +325,10 @@
      */
     async function cargarSolicitud() {
       const idSeleccionado = document.getElementById('solicitud-select').value;
-      if (!idSeleccionado) return;
+      if (!idSeleccionado) {
+        limpiarFormulario();
+        return;
+      }
 
       const estadoBadge = document.getElementById('estado-badge');
       const tbody = document.getElementById('items-body');
@@ -324,7 +340,8 @@
       tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Obteniendo datos de la solicitud...</td></tr>';
       
       try {
-        const response = await fetch(SCRIPT_URL + "?action=obtenerPedido&id=" + idSeleccionado);
+        // Anti-caché mediante timestamp
+        const response = await fetch(SCRIPT_URL + "?action=obtenerPedido&id=" + idSeleccionado + "&t=" + Date.now());
         const data = await response.json();
 
         if (data.error) {
@@ -332,8 +349,8 @@
           return;
         }
 
-        // 1. Llenar encabezados con los datos devueltos por el backend
-        document.getElementById('usuario-val').value = data.usuario;
+        // Llenar datos de encabezado
+        document.getElementById('usuario-val').value = data.usuario || 'N/A';
         
         const now = new Date();
         document.getElementById('fecha-val').value = now.toLocaleDateString('es-ES') + " " + now.toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'});
@@ -342,21 +359,24 @@
         estadoBadge.style.color = "#ffb74d";
         estadoBadge.style.background = "rgba(255, 183, 77, 0.2)";
 
-        // 2. Llenar tabla de ítems dinámicamente
+        // Llenar la tabla de productos
         tbody.innerHTML = '';
-        data.items.forEach(item => {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${item.codigo}</td>
-            <td>${item.detalle}</td>
-            <td style="text-align: center;">${item.solicitado}</td>
-            <td style="text-align: center;">
-              <!-- Se inyecta el código en data-codigo para recuperarlo al guardar -->
-              <input type="number" class="input-qty" data-codigo="${item.codigo}" value="${item.solicitado}" min="0">
-            </td>
-          `;
-          tbody.appendChild(tr);
-        });
+        if (data.items && data.items.length > 0) {
+          data.items.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${item.codigo}</td>
+              <td>${item.detalle}</td>
+              <td style="text-align: center;">${item.solicitado}</td>
+              <td style="text-align: center;">
+                <input type="number" class="input-qty" data-codigo="${item.codigo}" value="${item.solicitado}" min="0">
+              </td>
+            `;
+            tbody.appendChild(tr);
+          });
+        } else {
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Sin productos en esta solicitud</td></tr>';
+        }
 
       } catch (error) {
         alert("Error al cargar la solicitud: " + error.message);
@@ -364,7 +384,7 @@
     }
 
     /**
-     * Envía la autorización al endpoint POST
+     * Envía la autorización al endpoint POST y actualiza los pendientes
      */
     async function autorizarPedido() {
       const idSeleccionado = document.getElementById('solicitud-select').value;
@@ -375,7 +395,7 @@
       btn.innerHTML = '<span>⏳</span><span>Procesando...</span>';
       btn.disabled = true;
 
-      // Recopilar información de la tabla leyendo las clases "input-qty"
+      // Recopilar cantidades modificadas
       const inputs = document.querySelectorAll('.input-qty');
       const itemsAutorizados = [];
       
@@ -386,14 +406,12 @@
         });
       });
 
-      // Construir el objeto JSON requerido por tu código GAS
       const payload = {
         id: idSeleccionado,
         items: itemsAutorizados
       };
 
       try {
-        // En Google Apps Script Web Apps, enviar como text/plain evita el bloqueo de CORS (Preflight)
         const response = await fetch(SCRIPT_URL, {
           method: 'POST',
           body: JSON.stringify(payload),
@@ -405,16 +423,10 @@
         const result = await response.json();
 
         if (result.success) {
-          // Cambiar estado visualmente
-          const estadoBadge = document.getElementById('estado-badge');
-          estadoBadge.textContent = "Autorizado";
-          estadoBadge.style.color = "#43b581";
-          estadoBadge.style.background = "rgba(67, 181, 129, 0.2)";
-
-          alert(result.message); // Muestra el mensaje del backend (ej: "Pedido autorizado. Técnico notificado.")
+          alert(result.message);
           
-          // Refrescar la lista de pendientes para que este ID desaparezca del combo box
-          cargarPendientes();
+          // Refrescar automáticamente la lista de pendientes
+          await cargarPendientes();
         } else {
           alert("Error: " + result.message);
         }
@@ -422,7 +434,6 @@
       } catch (error) {
         alert("Error de conexión al autorizar: " + error.message);
       } finally {
-        // Restaurar estado del botón
         btn.innerHTML = textOriginal;
         btn.disabled = false;
       }
