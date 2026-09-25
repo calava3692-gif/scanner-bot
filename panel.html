@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel Principal - Scanner Bot</title>
+  
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#2196f3">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: #f4f6f9;
+      color: #333;
+    }
+
+    /* BARRA SUPERIOR */
+    .topbar {
+      background-color: #2196f3;
+      color: white;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .user-info {
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .user-info span {
+      font-weight: 700;
+    }
+
+    .btn-logout {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: 1px solid white;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .btn-logout:hover {
+      background: white;
+      color: #2196f3;
+    }
+
+    /* CONTENEDOR PRINCIPAL */
+    .container {
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    /* ALERTA DE PEDIDOS */
+    .alert-panel {
+      background: #fff;
+      border-left: 5px solid #ff9800;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      margin-bottom: 25px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .alert-text {
+      font-size: 15px;
+      font-weight: 600;
+      color: #555;
+    }
+
+    .badge {
+      background: #ff9800;
+      color: white;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 16px;
+      font-weight: bold;
+    }
+
+    /* CUADRÍCULA DE MÓDULOS */
+    .grid-menu {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+    }
+
+    .card {
+      background: white;
+      padding: 25px 15px;
+      border-radius: 12px;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    }
+
+    .card-icon {
+      font-size: 40px;
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #2c3e50;
+    }
+
+    /* Ocultar módulo de administrador por defecto */
+    .admin-module {
+      display: none;
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- Barra Superior -->
+  <nav class="topbar">
+    <div class="user-info">Hola, <span id="display-name">Cargando...</span></div>
+    <button class="btn-logout" id="btn-logout">Cerrar sesión</button>
+  </nav>
+
+  <main class="container">
+    
+    <!-- Contador de Pedidos -->
+    <div class="alert-panel">
+      <div class="alert-text">Pedidos pendientes por autorizar</div>
+      <div class="badge" id="badge-pendientes">...</div>
+    </div>
+
+    <!-- Menú de Módulos -->
+    <div class="grid-menu">
+      
+      <a href="autorizar.html" class="card">
+        <div class="card-icon">📝</div>
+        <div class="card-title">Autorizar Pedidos</div>
+      </a>
+
+      <a href="materiales.html" class="card">
+        <div class="card-icon">📦</div>
+        <div class="card-title">Configuración de Materiales</div>
+      </a>
+
+      <a href="reportes.html" class="card">
+        <div class="card-icon">📊</div>
+        <div class="card-title">Reportes</div>
+      </a>
+
+      <!-- Módulo exclusivo de Administradores -->
+      <a href="usuarios.html" class="card admin-module" id="modulo-admin">
+        <div class="card-icon">⚙️</div>
+        <div class="card-title">Gestión de Usuarios y Permisos</div>
+      </a>
+
+    </div>
+
+  </main>
+
+  <script>
+    // ==========================================
+    // URL DEL SCRIPT (Para consultar los pedidos pendientes)
+    // ==========================================
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzIhkMCH3oIUSnPMaQOgp2KgIaZzPL90YfcYP0gD3RJlytfHhJELsDEi5cpXKFba3hUwQ/exec";
+
+    document.addEventListener("DOMContentLoaded", () => {
+      
+      // 1. VALIDAR SESIÓN ACTIVA
+      const sesionString = localStorage.getItem('sesionPWA');
+      if (!sesionString) {
+        // Si no hay sesión, regresarlo al Login
+        window.location.href = 'index.html';
+        return;
+      }
+
+      // 2. MOSTRAR DATOS DEL USUARIO
+      const usuario = JSON.parse(sesionString);
+      
+      // Extraer solo el primer nombre y apellido para no saturar la barra
+      const nombreCorto = usuario.nombre.split(" ").slice(0, 2).join(" "); 
+      document.getElementById('display-name').textContent = nombreCorto;
+
+      // 3. ACTIVAR MÓDULO DE ADMIN (Si corresponde)
+      if (usuario.isAdmin === true) {
+        document.getElementById('modulo-admin').style.display = 'flex';
+      }
+
+      // 4. CONSULTAR CANTIDAD DE PEDIDOS PENDIENTES
+      obtenerPendientes();
+
+      // 5. CERRAR SESIÓN
+      document.getElementById('btn-logout').addEventListener('click', () => {
+        if(confirm("¿Seguro que deseas cerrar sesión?")) {
+          localStorage.removeItem('sesionPWA');
+          window.location.href = 'index.html';
+        }
+      });
+    });
+
+    async function obtenerPendientes() {
+      const badge = document.getElementById('badge-pendientes');
+      try {
+        const url = `${SCRIPT_URL}?action=listarPendientes&_=${Date.now()}`;
+        const respuesta = await fetch(url);
+        const idsPendientes = await respuesta.json();
+        
+        // La API devuelve un arreglo con los IDs pendientes, solo contamos su longitud
+        badge.textContent = idsPendientes.length;
+
+        if (idsPendientes.length > 0) {
+          badge.style.background = "#f44336"; // Rojo si hay pendientes
+        } else {
+          badge.style.background = "#4caf50"; // Verde si está todo al día
+        }
+      } catch (error) {
+        console.error("Error obteniendo pendientes:", error);
+        badge.textContent = "!";
+      }
+    }
+  </script>
+</body>
+</html>
