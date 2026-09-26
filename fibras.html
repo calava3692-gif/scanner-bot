@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catálogo de Fibras - Scanner Bot</title>
+  
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: #f4f6f9; color: #333; }
+    
+    /* Navbar */
+    .topbar { background-color: #2196f3; color: white; padding: 15px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .btn-back { background: rgba(255,255,255,0.2); color: white; border: 1px solid white; padding: 6px 12px; border-radius: 6px; cursor: pointer; text-decoration: none; font-size: 14px; font-weight: 500; transition: background 0.3s; }
+    .btn-back:hover { background: white; color: #2196f3; }
+    
+    .container { padding: 15px; max-width: 900px; margin: auto; }
+    
+    /* Buscador */
+    .search-box { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; outline: none; transition: border-color 0.2s; }
+    .search-box:focus { border-color: #2196f3; }
+
+    /* Tarjetas Móviles */
+    .material-card { background: white; border-radius: 8px; padding: 15px; margin-bottom: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 8px; }
+    .mat-header { display: flex; justify-content: space-between; font-weight: bold; color: #1976d2; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+    .mat-body { font-size: 14px; color: #555; }
+    .badge-ok { background: #4caf50; color: white; padding: 3px 8px; border-radius: 12px; font-size: 12px; }
+    .badge-no { background: #f44336; color: white; padding: 3px 8px; border-radius: 12px; font-size: 12px; }
+    .btn-edit { background: #ff9800; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 5px; transition: background 0.3s; }
+    .btn-edit:hover { background: #f57c00; }
+    
+    /* Modal Flotante */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 100; padding: 15px; }
+    .modal-content { background: white; width: 100%; max-width: 400px; border-radius: 10px; padding: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+    .modal-header { font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #2196f3; }
+    
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #555; }
+    .form-group input[type="text"], .form-group input[type="number"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 15px; outline: none; }
+    .form-group input[readonly] { background-color: #f0f0f0; color: #666; border-color: #ddd; }
+    
+    .checkbox-group { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 15px; }
+    .checkbox-group input { width: 20px; height: 20px; }
+    
+    .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+    .btn-save { flex: 1; background: #2196f3; color: white; border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+    .btn-cancel { flex: 1; background: #e0e0e0; color: #333; border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+
+    #loading { text-align: center; padding: 20px; font-weight: bold; color: #666; font-size: 16px; }
+  </style>
+</head>
+<body>
+
+  <nav class="topbar">
+    <a href="panel.html" class="btn-back">⬅ Volver</a>
+    <div style="font-weight: bold;">Catálogo de Fibras Ópticas</div>
+  </nav>
+
+  <main class="container">
+    <input type="text" id="searchInput" class="search-box" placeholder="🔍 Buscar fibra por código o detalle..." onkeyup="filtrarFibras()">
+    
+    <div id="loading">Consultando fibras al servidor... ⏳</div>
+    <div id="lista-fibras"></div>
+  </main>
+
+  <!-- Ventana Modal de Edición -->
+  <div class="modal-overlay" id="editModal">
+    <div class="modal-content">
+      <div class="modal-header">Editar Fibra Óptica</div>
+      
+      <input type="hidden" id="mod-fila">
+      
+      <div class="form-group">
+        <label>Código</label>
+        <input type="text" id="mod-codigo" readonly>
+      </div>
+      <div class="form-group">
+        <label>Detalle</label>
+        <input type="text" id="mod-detalle" readonly>
+      </div>
+      <div class="form-group">
+        <label>Cantidad Base (Metros/Unidades)</label>
+        <input type="number" id="mod-cantidad">
+      </div>
+      <div class="form-group">
+        <label>Tipo (Bobina/Preco_Can/Preco_Uni)</label>
+        <input type="text" id="mod-tipo">
+      </div>
+      <div class="form-group">
+        <label>Observación</label>
+        <input type="text" id="mod-obs">
+      </div>
+      
+      <label class="checkbox-group">
+        <input type="checkbox" id="mod-disponible"> Fibra Disponible
+      </label>
+
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="cerrarModal()">Cancelar</button>
+        <button class="btn-save" onclick="guardarCambios()" id="btnSave">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzIhkMCH3oIUSnPMaQOgp2KgIaZzPL90YfcYP0gD3RJlytfHhJELsDEi5cpXKFba3hUwQ/exec";
+    let fibrasGlobal = [];
+
+    document.addEventListener("DOMContentLoaded", () => {
+      if (!localStorage.getItem('sesionPWA')) { 
+        window.location.href = 'index.html'; 
+        return; 
+      }
+      cargarFibras();
+    });
+
+    async function cargarFibras() {
+      try {
+        const respuesta = await fetch(`${SCRIPT_URL}?action=listarFibras&_=${Date.now()}`);
+        const rawText = await respuesta.text();
+        fibrasGlobal = JSON.parse(rawText);
+        
+        renderizarLista(fibrasGlobal);
+      } catch (error) {
+        console.error("Error al cargar:", error);
+        document.getElementById("loading").innerText = "❌ Error de conexión al cargar las fibras.";
+      }
+    }
+
+    function renderizarLista(datos) {
+      document.getElementById("loading").style.display = "none";
+      const contenedor = document.getElementById("lista-fibras");
+      contenedor.innerHTML = "";
+
+      if (!Array.isArray(datos) || datos.length === 0) {
+        contenedor.innerHTML = "<p style='text-align:center;'>No se encontraron registros de fibra óptica.</p>";
+        return;
+      }
+
+      datos.forEach(fib => {
+        const estadoHTML = fib.disponible ? '<span class="badge-ok">Disponible</span>' : '<span class="badge-no">Agotado</span>';
+        
+        const card = document.createElement("div");
+        card.className = "material-card";
+        
+        card.innerHTML = `
+          <div class="mat-header">
+            <span>${fib.codigo}</span>
+            ${estadoHTML}
+          </div>
+          <div class="mat-body">
+            <strong>${fib.detalle}</strong><br>
+            Tipo: ${fib.tipo || "-"} | Cantidad: ${fib.cantidadBase || "0"}<br>
+            <small>Obs: ${fib.observacion || "Ninguna"}</small>
+          </div>
+          <button class="btn-edit" data-fila="${fib.fila}" data-codigo="${fib.codigo}" data-detalle="${fib.detalle}" data-cantidad="${fib.cantidadBase}" data-tipo="${fib.tipo}" data-disponible="${fib.disponible}" data-obs="${fib.observacion || ""}" onclick="abrirModalDesdeBtn(this)">⚙️ Editar Atributos</button>
+        `;
+        contenedor.appendChild(card);
+      });
+    }
+
+    function filtrarFibras() {
+      const texto = document.getElementById("searchInput").value.toLowerCase();
+      const filtradas = fibrasGlobal.filter(f => 
+        f.codigo.toLowerCase().includes(texto) || 
+        f.detalle.toLowerCase().includes(texto)
+      );
+      renderizarLista(filtradas);
+    }
+
+    function abrirModalDesdeBtn(boton) {
+      document.getElementById("mod-fila").value = boton.getAttribute("data-fila");
+      document.getElementById("mod-codigo").value = boton.getAttribute("data-codigo");
+      document.getElementById("mod-detalle").value = boton.getAttribute("data-detalle");
+      document.getElementById("mod-cantidad").value = boton.getAttribute("data-cantidad");
+      document.getElementById("mod-tipo").value = boton.getAttribute("data-tipo");
+      document.getElementById("mod-disponible").checked = (boton.getAttribute("data-disponible") === "true");
+      document.getElementById("mod-obs").value = boton.getAttribute("data-obs");
+      
+      document.getElementById("editModal").style.display = "flex";
+    }
+
+    function cerrarModal() {
+      document.getElementById("editModal").style.display = "none";
+    }
+
+    async function guardarCambios() {
+      const btn = document.getElementById("btnSave");
+      btn.innerText = "Guardando...";
+      btn.disabled = true;
+
+      const payload = {
+        action: "actualizarFibra",
+        fila: parseInt(document.getElementById("mod-fila").value),
+        codigo: document.getElementById("mod-codigo").value,
+        cantidadBase: document.getElementById("mod-cantidad").value,
+        tipo: document.getElementById("mod-tipo").value,
+        observacion: document.getElementById("mod-obs").value,
+        disponible: document.getElementById("mod-disponible").checked
+      };
+
+      try {
+        const response = await fetch(SCRIPT_URL, {
+          method: "POST",
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload),
+          redirect: "follow"
+        });
+        
+        const resultado = await response.json();
+        
+        if (resultado.success) {
+          alert("¡Fibra actualizada exitosamente!");
+          cerrarModal();
+          document.getElementById("lista-fibras").innerHTML = "";
+          document.getElementById("loading").style.display = "block";
+          cargarFibras(); 
+        } else {
+          alert("Error: " + resultado.message);
+        }
+      } catch (e) {
+        console.error("Error al guardar:", e);
+        alert("Ocurrió un error al enviar la actualización al servidor.");
+      }
+      
+      btn.innerText = "Guardar";
+      btn.disabled = false;
+    }
+  </script>
+</body>
+</html>
