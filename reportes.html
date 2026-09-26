@@ -3,102 +3,131 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reportes - Scanner Bot</title>
+  <title>Reportes Profesionales - Scanner Bot</title>
   
-  <!-- Librería Chart.js para gráficos -->
+  <!-- Librerías: Chart.js y HTML2PDF -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background-color: #f4f6f9; color: #333; }
+    body { background-color: #f4f7fa; color: #2c3e50; }
     
     /* Navbar */
-    .topbar { background-color: #2196f3; color: white; padding: 15px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    .btn-back { background: rgba(255,255,255,0.2); color: white; border: 1px solid white; padding: 6px 12px; border-radius: 6px; cursor: pointer; text-decoration: none; font-size: 14px; font-weight: 500; transition: background 0.3s; }
-    .btn-back:hover { background: white; color: #2196f3; }
+    .topbar { background-color: #1a237e; color: white; padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .btn-back { background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 8px 15px; border-radius: 6px; cursor: pointer; text-decoration: none; font-size: 14px; font-weight: 500; transition: all 0.3s; }
+    .btn-back:hover { background: white; color: #1a237e; }
     
-    .container { padding: 20px; max-width: 1000px; margin: auto; }
+    .container { padding: 20px; max-width: 1200px; margin: auto; }
     
     /* Panel de Filtros */
-    .filter-panel { background: white; padding: 15px 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; }
-    .form-group { flex: 1; min-width: 150px; }
-    .form-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 6px; color: #666; }
-    .form-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; outline: none; background: #fff; cursor: pointer; }
-    .btn-filtrar { background: #2196f3; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: background 0.3s; height: 41px; }
-    .btn-filtrar:hover { background: #1976d2; }
-    .btn-limpiar { background: #e0e0e0; color: #333; border: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; height: 41px; }
+    .filter-panel { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; }
+    .form-group { flex: 1; min-width: 180px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; color: #546e7a; text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-group select { width: 100%; padding: 10px; border: 1px solid #cfd8dc; border-radius: 8px; font-size: 14px; outline: none; background: #f8fafc; cursor: pointer; }
+    
+    .btn-filtrar { background: #1a237e; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; height: 42px; transition: 0.3s; }
+    .btn-filtrar:hover { background: #283593; }
+    .btn-limpiar { background: #eceff1; color: #455a64; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; height: 42px; }
+    .btn-pdf { background: #d32f2f; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; height: 42px; display: flex; align-items: center; gap: 8px; }
+    .btn-pdf:hover { background: #c62828; }
+
+    /* Tarjetas KPI (Indicadores clave) */
+    .kpi-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+    .kpi-card { background: white; padding: 20px; border-radius: 12px; border-left: 5px solid #1a237e; box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
+    .kpi-title { font-size: 13px; color: #78909c; font-weight: bold; text-transform: uppercase; }
+    .kpi-value { font-size: 28px; font-weight: 800; color: #1a237e; margin-top: 5px; }
 
     /* Grid de Gráficos */
-    .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
-    
-    .chart-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center; }
-    .chart-title { font-size: 16px; font-weight: bold; color: #1976d2; margin-bottom: 15px; width: 100%; text-align: left; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-    
-    .chart-container { position: relative; width: 100%; max-width: 100%; height: 250px; display: flex; justify-content: center; }
+    .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; }
+    .chart-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: flex; flex-direction: column; align-items: center; border: 1px solid #f0f2f5; }
+    .chart-title { font-size: 16px; font-weight: 700; color: #37474f; margin-bottom: 15px; width: 100%; text-align: left; border-bottom: 2px solid #f4f6f9; padding-bottom: 10px; }
+    .chart-container { position: relative; width: 100%; max-width: 100%; height: 280px; display: flex; justify-content: center; }
 
-    /* Fila ancha para gráfico de barras */
     .full-width { grid-column: 1 / -1; }
-    .full-width .chart-container { height: 320px; }
+    .full-width .chart-container { height: 350px; }
+    
+    #loading { text-align: center; padding: 50px; font-weight: bold; color: #1a237e; font-size: 18px; }
 
-    #loading { text-align: center; padding: 40px; font-weight: bold; color: #666; font-size: 18px; }
+    /* Zona exportable */
+    #zona-exportable { padding: 10px; background: #f4f7fa; }
   </style>
 </head>
 <body>
 
   <nav class="topbar">
-    <a href="panel.html" class="btn-back">⬅ Volver</a>
-    <div style="font-weight: bold;">Estadísticas y Reportes</div>
+    <a href="panel.html" class="btn-back">⬅ Volver al Panel</a>
+    <div style="font-weight: bold; font-size: 18px;">Análisis de Datos e Inventario</div>
   </nav>
 
   <main class="container">
-    
-    <div id="loading">Obteniendo datos en tiempo real... 📊</div>
+    <div id="loading">Sincronizando reportes avanzados... ⏳</div>
 
-    <!-- Filtros -->
+    <!-- Panel de Filtros -->
     <div class="filter-panel" id="filter-panel" style="display: none;">
       <div class="form-group">
-        <label>Usuario / Técnico</label>
-        <select id="filtro-usuario">
-          <option value="TODOS">Todos los usuarios</option>
+        <label>Rango de Tiempo</label>
+        <select id="filtro-tiempo">
+          <option value="TODOS">Histórico Completo</option>
+          <option value="HOY">Solo Hoy</option>
+          <option value="SEMANA">Últimos 7 Días</option>
+          <option value="MES">Este Mes</option>
         </select>
       </div>
       <div class="form-group">
-        <label>Estado del Pedido</label>
-        <select id="filtro-estado">
-          <option value="TODOS">Todos los estados</option>
-        </select>
+        <label>Técnico Solicitante</label>
+        <select id="filtro-usuario"><option value="TODOS">Todos los técnicos</option></select>
       </div>
-      <button class="btn-filtrar" onclick="aplicarFiltros()">Aplicar Filtro</button>
-      <button class="btn-limpiar" onclick="limpiarFiltros()">Reset</button>
+      <div class="form-group">
+        <label>Artículo / Material</label>
+        <select id="filtro-item"><option value="TODOS">Todos los artículos</option></select>
+      </div>
+      <div class="form-group">
+        <label>Estado</label>
+        <select id="filtro-estado"><option value="TODOS">Todos los estados</option></select>
+      </div>
+      
+      <button class="btn-filtrar" onclick="aplicarFiltros()">Filtrar</button>
+      <button class="btn-limpiar" onclick="limpiarFiltros()">↻</button>
+      <button class="btn-pdf" onclick="exportarPDF()">📄 Exportar PDF</button>
     </div>
 
-    <!-- Gráficos -->
-    <div class="dashboard-grid" id="dashboard" style="display: none;">
+    <!-- ZONA EXPORTABLE PARA EL PDF -->
+    <div id="zona-exportable" style="display: none;">
       
-      <!-- Gráfico de Pastel -->
-      <div class="chart-card">
-        <div class="chart-title">Distribución por Estado</div>
-        <div class="chart-container">
-          <canvas id="chartEstado"></canvas>
+      <!-- Indicadores -->
+      <div class="kpi-container">
+        <div class="kpi-card">
+          <div class="kpi-title">Total Pedidos (Transacciones)</div>
+          <div class="kpi-value" id="kpi-pedidos">0</div>
+        </div>
+        <div class="kpi-card" style="border-left-color: #4caf50;">
+          <div class="kpi-title">Unidades Entregadas/Pedidas</div>
+          <div class="kpi-value" id="kpi-unidades" style="color: #4caf50;">0</div>
+        </div>
+        <div class="kpi-card" style="border-left-color: #ff9800;">
+          <div class="kpi-title">Técnicos Involucrados</div>
+          <div class="kpi-value" id="kpi-tecnicos" style="color: #ff9800;">0</div>
         </div>
       </div>
 
-      <!-- Gráfico de Dona -->
-      <div class="chart-card">
-        <div class="chart-title">Pedidos por Usuario</div>
-        <div class="chart-container">
-          <canvas id="chartUsuario"></canvas>
+      <!-- Gráficos -->
+      <div class="dashboard-grid">
+        <div class="chart-card">
+          <div class="chart-title">Cantidades por Técnico</div>
+          <div class="chart-container"><canvas id="chartUsuario"></canvas></div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-title">Distribución de Estados</div>
+          <div class="chart-container"><canvas id="chartEstado"></canvas></div>
+        </div>
+
+        <div class="chart-card full-width">
+          <div class="chart-title">Top Materiales Solicitados (Total Unidades)</div>
+          <div class="chart-container"><canvas id="chartMateriales"></canvas></div>
         </div>
       </div>
-
-      <!-- Gráfico de Barras -->
-      <div class="chart-card full-width">
-        <div class="chart-title">Top 10 Materiales Más Solicitados (Cantidades)</div>
-        <div class="chart-container">
-          <canvas id="chartMateriales"></canvas>
-        </div>
-      </div>
-
     </div>
   </main>
 
@@ -110,32 +139,21 @@
     let chartInstUsuario = null;
     let chartInstMateriales = null;
 
-    const colores = ['#2196f3', '#4caf50', '#ff9800', '#f44336', '#9c27b0', '#00bcd4', '#ffeb3b', '#795548', '#607d8b', '#e91e63'];
+    const coloresPro = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf', '#393b79', '#5254a3', '#6b6ecf', '#9c9ede'];
 
     document.addEventListener("DOMContentLoaded", () => {
-      if (!localStorage.getItem('sesionPWA')) { 
-        window.location.href = 'index.html'; 
-        return; 
-      }
+      if (!localStorage.getItem('sesionPWA')) { window.location.href = 'index.html'; return; }
       cargarDatos();
     });
 
     async function cargarDatos() {
       try {
-        // Petición GET directa con timestamp anti-caché
         const respuesta = await fetch(`${SCRIPT_URL}?action=obtenerReportes&_=${Date.now()}`);
         const rawText = await respuesta.text();
         const datos = JSON.parse(rawText);
 
-        // Validación de seguridad para verificar que sea un arreglo de datos
-        if (!Array.isArray(datos)) {
-          console.error("Respuesta inesperada del servidor:", datos);
-          document.getElementById("loading").innerText = "❌ Error: " + (datos.error || datos.message || "Respuesta no válida del servidor.");
-          return;
-        }
-
-        if (datos.length === 0) {
-          document.getElementById("loading").innerText = "⚠️ No hay registros de pedidos disponibles.";
+        if (!Array.isArray(datos) || datos.length === 0) {
+          document.getElementById("loading").innerText = "⚠️ No hay datos válidos para generar reportes.";
           return;
         }
 
@@ -143,84 +161,113 @@
         
         document.getElementById("loading").style.display = "none";
         document.getElementById("filter-panel").style.display = "flex";
-        document.getElementById("dashboard").style.display = "grid";
+        document.getElementById("zona-exportable").style.display = "block";
 
-        cargarFiltros(datosGlobales);
-        renderizarGraficos(datosGlobales);
+        cargarFiltrosSelect(datosGlobales);
+        renderizarTablero(datosGlobales);
 
       } catch (error) {
-        console.error("Error al cargar reportes:", error);
-        document.getElementById("loading").innerText = "❌ Error de conexión al cargar los reportes.";
+        document.getElementById("loading").innerText = "❌ Error conectando con el servidor.";
       }
     }
 
-    function cargarFiltros(datos) {
+    // ================== FILTROS Y CONTROLES ==================
+    function cargarFiltrosSelect(datos) {
       const selectUser = document.getElementById("filtro-usuario");
       const selectEstado = document.getElementById("filtro-estado");
+      const selectItem = document.getElementById("filtro-item");
 
-      // Limpiar opciones anteriores manteniendo solo "Todos"
-      selectUser.innerHTML = '<option value="TODOS">Todos los usuarios</option>';
-      selectEstado.innerHTML = '<option value="TODOS">Todos los estados</option>';
+      const usuarios = [...new Set(datos.map(d => d.usuario))].filter(u => u).sort();
+      const estados = [...new Set(datos.map(d => d.estado))].filter(e => e).sort();
+      const items = [...new Set(datos.map(d => d.descripcion))].filter(i => i).sort();
 
-      const usuariosUnicos = [...new Set(datos.map(item => item.usuario))].filter(u => u).sort();
-      const estadosUnicos = [...new Set(datos.map(item => item.estado))].filter(e => e).sort();
-
-      usuariosUnicos.forEach(user => {
-        let opt = document.createElement("option");
-        opt.value = user; opt.textContent = user;
-        selectUser.appendChild(opt);
-      });
-
-      estadosUnicos.forEach(est => {
-        let opt = document.createElement("option");
-        opt.value = est; opt.textContent = est;
-        selectEstado.appendChild(opt);
-      });
+      usuarios.forEach(u => selectUser.appendChild(new Option(u, u)));
+      estados.forEach(e => selectEstado.appendChild(new Option(e, e)));
+      items.forEach(i => selectItem.appendChild(new Option(i, i)));
     }
 
     function aplicarFiltros() {
-      const usrFiltro = document.getElementById("filtro-usuario").value;
-      const estFiltro = document.getElementById("filtro-estado").value;
+      const fTiempo = document.getElementById("filtro-tiempo").value;
+      const fUser = document.getElementById("filtro-usuario").value;
+      const fEstado = document.getElementById("filtro-estado").value;
+      const fItem = document.getElementById("filtro-item").value;
+
+      const hoy = new Date();
 
       const datosFiltrados = datosGlobales.filter(item => {
-        let pasaUsr = (usrFiltro === "TODOS") ? true : (item.usuario === usrFiltro);
-        let pasaEst = (estFiltro === "TODOS") ? true : (item.estado === estFiltro);
-        return pasaUsr && pasaEst;
+        // Filtro Tiempo
+        let pasaTiempo = true;
+        if (fTiempo !== "TODOS") {
+          let f = parsearFecha(item.fecha);
+          if (f) {
+            if (fTiempo === "HOY") {
+              pasaTiempo = (f.getDate() === hoy.getDate() && f.getMonth() === hoy.getMonth() && f.getFullYear() === hoy.getFullYear());
+            } else if (fTiempo === "SEMANA") {
+              let semanaAtras = new Date(); semanaAtras.setDate(hoy.getDate() - 7);
+              pasaTiempo = (f >= semanaAtras && f <= hoy);
+            } else if (fTiempo === "MES") {
+              pasaTiempo = (f.getMonth() === hoy.getMonth() && f.getFullYear() === hoy.getFullYear());
+            }
+          }
+        }
+        
+        let pasaUsr = (fUser === "TODOS") ? true : (item.usuario === fUser);
+        let pasaEst = (fEstado === "TODOS") ? true : (item.estado === fEstado);
+        let pasaItem = (fItem === "TODOS") ? true : (item.descripcion === fItem);
+
+        return pasaTiempo && pasaUsr && pasaEst && pasaItem;
       });
 
-      renderizarGraficos(datosFiltrados);
+      renderizarTablero(datosFiltrados);
     }
 
     function limpiarFiltros() {
+      document.getElementById("filtro-tiempo").value = "TODOS";
       document.getElementById("filtro-usuario").value = "TODOS";
       document.getElementById("filtro-estado").value = "TODOS";
-      renderizarGraficos(datosGlobales);
+      document.getElementById("filtro-item").value = "TODOS";
+      renderizarTablero(datosGlobales);
     }
 
-    function renderizarGraficos(datos) {
+    function parsearFecha(fechaCruda) {
+      if (!fechaCruda) return null;
+      let num = Number(fechaCruda);
+      if (!isNaN(num)) return new Date(num); // Viene en milisegundos desde GAS
+      
+      // Fallback si es texto dd/mm/yyyy hh:mm:ss
+      let partes = String(fechaCruda).split(" ")[0].split("/");
+      if (partes.length === 3) return new Date(partes[2], partes[1] - 1, partes[0]);
+      return new Date(fechaCruda);
+    }
+
+    // ================== RENDERIZADO GENERAL ==================
+    function renderizarTablero(datos) {
       if(datos.length === 0) {
         alert("No existen datos para la combinación de filtros seleccionada.");
         return;
       }
 
-      // 1. Gráfico por Estado
+      // 1. Actualizar KPIs
+      document.getElementById("kpi-pedidos").innerText = datos.length;
+      document.getElementById("kpi-unidades").innerText = datos.reduce((sum, item) => sum + (item.cantidad || 0), 0).toLocaleString();
+      document.getElementById("kpi-tecnicos").innerText = [...new Set(datos.map(d => d.usuario))].length;
+
+      // 2. Gráfico Usuarios (Quién pidió más cantidad)
+      const dataUsuario = agruparDatos(datos, 'usuario', 'sum_cantidad');
+      crearGrafico('chartUsuario', 'doughnut', Object.keys(dataUsuario), Object.values(dataUsuario), chartInstUsuario, (inst) => chartInstUsuario = inst);
+
+      // 3. Gráfico Estados (Conteo de movimientos)
       const dataEstado = agruparDatos(datos, 'estado', 'count');
       crearGrafico('chartEstado', 'pie', Object.keys(dataEstado), Object.values(dataEstado), chartInstEstado, (inst) => chartInstEstado = inst);
 
-      // 2. Gráfico por Usuario
-      const dataUsuario = agruparDatos(datos, 'usuario', 'count');
-      crearGrafico('chartUsuario', 'doughnut', Object.keys(dataUsuario), Object.values(dataUsuario), chartInstUsuario, (inst) => chartInstUsuario = inst);
-
-      // 3. Top 10 Materiales por Cantidad Sumada
+      // 4. Gráfico Materiales (Top 10 Cantidades)
       let dataMateriales = agruparDatos(datos, 'descripcion', 'sum_cantidad');
-      let matsOrdenados = Object.entries(dataMateriales)
-                                .sort((a, b) => b[1] - a[1])
-                                .slice(0, 10);
+      let matsOrdenados = Object.entries(dataMateriales).sort((a, b) => b[1] - a[1]).slice(0, 10);
       
-      const lblMateriales = matsOrdenados.map(i => recortarTexto(i[0], 25));
-      const valMateriales = matsOrdenados.map(i => i[1]);
+      const lblMat = matsOrdenados.map(i => recortarTexto(i[0], 35));
+      const valMat = matsOrdenados.map(i => i[1]);
       
-      crearGrafico('chartMateriales', 'bar', lblMateriales, valMateriales, chartInstMateriales, (inst) => chartInstMateriales = inst);
+      crearGrafico('chartMateriales', 'bar', lblMat, valMat, chartInstMateriales, (inst) => chartInstMateriales = inst);
     }
 
     function crearGrafico(canvasId, tipo, labels, dataObj, chartRef, setChartRef) {
@@ -233,7 +280,7 @@
           labels: labels,
           datasets: [{
             data: dataObj,
-            backgroundColor: colores,
+            backgroundColor: coloresPro,
             borderWidth: 1
           }]
         },
@@ -241,9 +288,16 @@
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
-            legend: { 
-              display: tipo !== 'bar',
-              position: 'right' 
+            legend: { display: tipo !== 'bar', position: 'right' },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  let label = context.label || '';
+                  if (label) label += ': ';
+                  label += context.raw.toLocaleString(); // Formato de miles
+                  return label;
+                }
+              }
             }
           },
           scales: tipo === 'bar' ? { y: { beginAtZero: true } } : {}
@@ -255,21 +309,40 @@
 
     function agruparDatos(arrayDatos, propiedad, tipoAgrupacion) {
       return arrayDatos.reduce((acc, obj) => {
-        let clave = obj[propiedad] || "Desconocido";
+        let clave = obj[propiedad] || "N/A";
         if (!acc[clave]) acc[clave] = 0;
         
-        if (tipoAgrupacion === 'count') {
-          acc[clave] += 1;
-        } else if (tipoAgrupacion === 'sum_cantidad') {
-          acc[clave] += (obj.cantidad || 0);
-        }
+        if (tipoAgrupacion === 'count') acc[clave] += 1;
+        else if (tipoAgrupacion === 'sum_cantidad') acc[clave] += (obj.cantidad || 0);
         
         return acc;
       }, {});
     }
 
-    function recortarTexto(texto, longitud) {
-      return texto.length > longitud ? texto.substring(0, longitud) + "..." : texto;
+    function recortarTexto(texto, max) {
+      return texto.length > max ? texto.substring(0, max) + "..." : texto;
+    }
+
+    // ================== EXPORTACIÓN PDF ==================
+    function exportarPDF() {
+      const elemento = document.getElementById("zona-exportable");
+      const boton = document.querySelector(".btn-pdf");
+      boton.innerText = "⏳ Generando...";
+      boton.disabled = true;
+
+      // Configuramos para que tome la captura en horizontal (Landscape)
+      const opciones = {
+        margin:       10,
+        filename:     `Reporte_ScannerBot_${new Date().toLocaleDateString().replace(/\//g, '-')}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+      };
+
+      html2pdf().set(opciones).from(elemento).save().then(() => {
+        boton.innerText = "📄 Exportar PDF";
+        boton.disabled = false;
+      });
     }
   </script>
 </body>
