@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reportes - Scanner Bot</title>
+  
+  <!-- Librería Chart.js para gráficos -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: #f4f6f9; color: #333; }
+    
+    /* Navbar */
+    .topbar { background-color: #2196f3; color: white; padding: 15px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .btn-back { background: rgba(255,255,255,0.2); color: white; border: 1px solid white; padding: 6px 12px; border-radius: 6px; cursor: pointer; text-decoration: none; font-size: 14px; font-weight: 500; transition: background 0.3s; }
+    .btn-back:hover { background: white; color: #2196f3; }
+    
+    .container { padding: 20px; max-width: 1000px; margin: auto; }
+    
+    /* Panel de Filtros */
+    .filter-panel { background: white; padding: 15px 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; }
+    .form-group { flex: 1; min-width: 150px; }
+    .form-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 6px; color: #666; }
+    .form-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; outline: none; background: #fff; cursor: pointer; }
+    .btn-filtrar { background: #2196f3; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: background 0.3s; height: 41px; }
+    .btn-filtrar:hover { background: #1976d2; }
+    .btn-limpiar { background: #e0e0e0; color: #333; border: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; height: 41px; }
+
+    /* Grid de Gráficos */
+    .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+    
+    .chart-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center; }
+    .chart-title { font-size: 16px; font-weight: bold; color: #1976d2; margin-bottom: 15px; width: 100%; text-align: left; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+    
+    .chart-container { position: relative; width: 100%; max-width: 100%; height: 250px; display: flex; justify-content: center; }
+
+    /* Fila ancha para gráfico de barras */
+    .full-width { grid-column: 1 / -1; }
+    .full-width .chart-container { height: 300px; }
+
+    #loading { text-align: center; padding: 40px; font-weight: bold; color: #666; font-size: 18px; }
+  </style>
+</head>
+<body>
+
+  <nav class="topbar">
+    <a href="panel.html" class="btn-back">⬅ Volver</a>
+    <div style="font-weight: bold;">Estadísticas y Reportes</div>
+  </nav>
+
+  <main class="container">
+    
+    <!-- Filtros -->
+    <div class="filter-panel" id="filter-panel" style="display: none;">
+      <div class="form-group">
+        <label>Usuario / Técnico</label>
+        <select id="filtro-usuario">
+          <option value="TODOS">Todos los usuarios</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Estado del Pedido</label>
+        <select id="filtro-estado">
+          <option value="TODOS">Todos los estados</option>
+        </select>
+      </div>
+      <button class="btn-filtrar" onclick="aplicarFiltros()">Aplicar Filtro</button>
+      <button class="btn-limpiar" onclick="limpiarFiltros()">Reset</button>
+    </div>
+
+    <div id="loading">Obteniendo datos en tiempo real... 📊</div>
+
+    <!-- Gráficos -->
+    <div class="dashboard-grid" id="dashboard" style="display: none;">
+      
+      <!-- Gráfico de Pastel -->
+      <div class="chart-card">
+        <div class="chart-title">Distribución por Estado</div>
+        <div class="chart-container">
+          <canvas id="chartEstado"></canvas>
+        </div>
+      </div>
+
+      <!-- Gráfico de Dona -->
+      <div class="chart-card">
+        <div class="chart-title">Pedidos por Usuario</div>
+        <div class="chart-container">
+          <canvas id="chartUsuario"></canvas>
+        </div>
+      </div>
+
+      <!-- Gráfico de Barras (Ancho completo) -->
+      <div class="chart-card full-width">
+        <div class="chart-title">Top 10 Materiales Más Solicitados (Cantidades)</div>
+        <div class="chart-container">
+          <canvas id="chartMateriales"></canvas>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzIhkMCH3oIUSnPMaQOgp2KgIaZzPL90YfcYP0gD3RJlytfHhJELsDEi5cpXKFba3hUwQ/exec";
+    
+    let datosGlobales = [];
+    
+    // Variables para almacenar las instancias de los gráficos (para poder destruirlos al filtrar)
+    let chartInstEstado = null;
+    let chartInstUsuario = null;
+    let chartInstMateriales = null;
+
+    // Paleta de colores atractiva
+    const colores = ['#2196f3', '#4caf50', '#ff9800', '#f44336', '#9c27b0', '#00bcd4', '#ffeb3b', '#795548', '#607d8b', '#e91e63'];
+
+    document.addEventListener("DOMContentLoaded", () => {
+      if (!localStorage.getItem('sesionPWA')) { 
+        window.location.href = 'index.html'; 
+        return; 
+      }
+      cargarDatos();
+    });
+
+    async function cargarDatos() {
+      try {
+        const payload = JSON.stringify({ action: "obtenerReportes" });
+        const respuesta = await fetch(SCRIPT_URL, {
+          method: "POST",
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: payload,
+          redirect: "follow"
+        });
+        
+        const rawText = await respuesta.text();
+        datosGlobales = JSON.parse(rawText);
+        
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("filter-panel").style.display = "flex";
+        document.getElementById("dashboard").style.display = "grid";
+
+        cargarFiltros(datosGlobales);
+        renderizarGraficos(datosGlobales);
+
+      } catch (error) {
+        console.error("Error al cargar:", error);
+        document.getElementById("loading").innerText = "❌ Error al cargar los reportes.";
+      }
+    }
+
+    // ==========================================
+    // LOGICA DE FILTROS
+    // ==========================================
+    function cargarFiltros(datos) {
+      const selectUser = document.getElementById("filtro-usuario");
+      const selectEstado = document.getElementById("filtro-estado");
+
+      // Extraer valores únicos usando Set
+      const usuariosUnicos = [...new Set(datos.map(item => item.usuario))].filter(u => u).sort();
+      const estadosUnicos = [...new Set(datos.map(item => item.estado))].filter(e => e).sort();
+
+      usuariosUnicos.forEach(user => {
+        let opt = document.createElement("option");
+        opt.value = user; opt.textContent = user;
+        selectUser.appendChild(opt);
+      });
+
+      estadosUnicos.forEach(est => {
+        let opt = document.createElement("option");
+        opt.value = est; opt.textContent = est;
+        selectEstado.appendChild(opt);
+      });
+    }
+
+    function aplicarFiltros() {
+      const usrFiltro = document.getElementById("filtro-usuario").value;
+      const estFiltro = document.getElementById("filtro-estado").value;
+
+      const datosFiltrados = datosGlobales.filter(item => {
+        let pasaUsr = (usrFiltro === "TODOS") ? true : (item.usuario === usrFiltro);
+        let pasaEst = (estFiltro === "TODOS") ? true : (item.estado === estFiltro);
+        return pasaUsr && pasaEst;
+      });
+
+      renderizarGraficos(datosFiltrados);
+    }
+
+    function limpiarFiltros() {
+      document.getElementById("filtro-usuario").value = "TODOS";
+      document.getElementById("filtro-estado").value = "TODOS";
+      renderizarGraficos(datosGlobales);
+    }
+
+    // ==========================================
+    // RENDERIZADO DE GRÁFICOS (CHART.JS)
+    // ==========================================
+    function renderizarGraficos(datos) {
+      if(datos.length === 0) {
+        alert("No hay datos para esta combinación de filtros.");
+        return;
+      }
+
+      // 1. Agrupar datos por Estado (Conteo de items)
+      const dataEstado = agruparDatos(datos, 'estado', 'count');
+      crearGrafico('chartEstado', 'pie', Object.keys(dataEstado), Object.values(dataEstado), chartInstEstado, (inst) => chartInstEstado = inst);
+
+      // 2. Agrupar datos por Usuario (Conteo de pedidos)
+      const dataUsuario = agruparDatos(datos, 'usuario', 'count');
+      crearGrafico('chartUsuario', 'doughnut', Object.keys(dataUsuario), Object.values(dataUsuario), chartInstUsuario, (inst) => chartInstUsuario = inst);
+
+      // 3. Agrupar materiales por Cantidad Total sumada (Top 10)
+      let dataMateriales = agruparDatos(datos, 'descripcion', 'sum_cantidad');
+      
+      // Ordenar de mayor a menor y tomar solo los 10 primeros
+      let matsOrdenados = Object.entries(dataMateriales)
+                                .sort((a, b) => b[1] - a[1])
+                                .slice(0, 10);
+      
+      const lblMateriales = matsOrdenados.map(i => recortarTexto(i[0], 25)); // Recorta textos muy largos
+      const valMateriales = matsOrdenados.map(i => i[1]);
+      
+      crearGrafico('chartMateriales', 'bar', lblMateriales, valMateriales, chartInstMateriales, (inst) => chartInstMateriales = inst);
+    }
+
+    // Función genérica para construir gráficos
+    function crearGrafico(canvasId, tipo, labels, dataObj, chartRef, setChartRef) {
+      const ctx = document.getElementById(canvasId).getContext('2d');
+      
+      // Si el gráfico ya existe, destruirlo antes de redibujar (evita superposición)
+      if (chartRef) { chartRef.destroy(); }
+
+      const newChart = new Chart(ctx, {
+        type: tipo,
+        data: {
+          labels: labels,
+          datasets: [{
+            data: dataObj,
+            backgroundColor: colores,
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { 
+              display: tipo !== 'bar', // Ocultar leyenda en barras
+              position: 'right' 
+            }
+          },
+          scales: tipo === 'bar' ? { y: { beginAtZero: true } } : {}
+        }
+      });
+
+      setChartRef(newChart); // Guardar la referencia del gráfico activo
+    }
+
+    // Función auxiliar para agrupar JSON (por conteo o por suma de cantidades)
+    function agruparDatos(arrayDatos, propiedad, tipoAgrupacion) {
+      return arrayDatos.reduce((acc, obj) => {
+        let clave = obj[propiedad] || "Desconocido";
+        if (!acc[clave]) acc[clave] = 0;
+        
+        if (tipoAgrupacion === 'count') {
+          acc[clave] += 1; // Contar cantidad de filas
+        } else if (tipoAgrupacion === 'sum_cantidad') {
+          acc[clave] += (obj.cantidad || 0); // Sumar valor de la columna 'CANTIDAD'
+        }
+        
+        return acc;
+      }, {});
+    }
+
+    // Función para acortar nombres muy largos de materiales en el gráfico de barras
+    function recortarTexto(texto, longitud) {
+      return texto.length > longitud ? texto.substring(0, longitud) + "..." : texto;
+    }
+  </script>
+</body>
+</html>
