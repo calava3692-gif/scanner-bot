@@ -32,7 +32,7 @@
     .btn-pdf { background: #d32f2f; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; height: 42px; display: flex; align-items: center; gap: 8px; }
     .btn-pdf:hover { background: #c62828; }
 
-    /* Tarjetas KPI */
+    /* Tarjetas KPI (Indicadores clave) */
     .kpi-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
     .kpi-card { background: white; padding: 20px; border-radius: 12px; border-left: 5px solid #1a237e; box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
     .kpi-title { font-size: 13px; color: #78909c; font-weight: bold; text-transform: uppercase; }
@@ -48,6 +48,8 @@
     .full-width .chart-container { height: 350px; }
     
     #loading { text-align: center; padding: 50px; font-weight: bold; color: #1a237e; font-size: 18px; }
+
+    /* Zona exportable */
     #zona-exportable { padding: 10px; background: #f4f7fa; }
   </style>
 </head>
@@ -93,6 +95,7 @@
     <!-- ZONA EXPORTABLE PARA EL PDF -->
     <div id="zona-exportable" style="display: none;">
       
+      <!-- Indicadores -->
       <div class="kpi-container">
         <div class="kpi-card">
           <div class="kpi-title">Total Pedidos (Transacciones)</div>
@@ -108,9 +111,10 @@
         </div>
       </div>
 
+      <!-- Gráficos -->
       <div class="dashboard-grid">
         <div class="chart-card">
-          <div class="chart-title">Cantidades por Técnico (Clic para filtrar)</div>
+          <div class="chart-title">Cantidades por Técnico</div>
           <div class="chart-container"><canvas id="chartUsuario"></canvas></div>
         </div>
 
@@ -167,6 +171,7 @@
       }
     }
 
+    // ================== FILTROS Y CONTROLES ==================
     function cargarFiltrosSelect(datos) {
       const selectUser = document.getElementById("filtro-usuario");
       const selectEstado = document.getElementById("filtro-estado");
@@ -190,6 +195,7 @@
       const hoy = new Date();
 
       const datosFiltrados = datosGlobales.filter(item => {
+        // Filtro Tiempo
         let pasaTiempo = true;
         if (fTiempo !== "TODOS") {
           let f = parsearFecha(item.fecha);
@@ -226,8 +232,9 @@
     function parsearFecha(fechaCruda) {
       if (!fechaCruda) return null;
       let num = Number(fechaCruda);
-      if (!isNaN(num)) return new Date(num);
+      if (!isNaN(num)) return new Date(num); // Viene en milisegundos desde GAS
       
+      // Fallback si es texto dd/mm/yyyy hh:mm:ss
       let partes = String(fechaCruda).split(" ")[0].split("/");
       if (partes.length === 3) return new Date(partes[2], partes[1] - 1, partes[0]);
       return new Date(fechaCruda);
@@ -240,65 +247,20 @@
         return;
       }
 
-      // 1. KPIs
+      // 1. Actualizar KPIs
       document.getElementById("kpi-pedidos").innerText = datos.length;
       document.getElementById("kpi-unidades").innerText = datos.reduce((sum, item) => sum + (item.cantidad || 0), 0).toLocaleString();
       document.getElementById("kpi-tecnicos").innerText = [...new Set(datos.map(d => d.usuario))].length;
 
-      // 2. Gráfico Usuarios Interactivo (Dona)
+      // 2. Gráfico Usuarios (Quién pidió más cantidad)
       const dataUsuario = agruparDatos(datos, 'usuario', 'sum_cantidad');
-      const labelsUsr = Object.keys(dataUsuario);
-      const valoresUsr = Object.values(dataUsuario);
+      crearGrafico('chartUsuario', 'doughnut', Object.keys(dataUsuario), Object.values(dataUsuario), chartInstUsuario, (inst) => chartInstUsuario = inst);
 
-      const ctxUsr = document.getElementById('chartUsuario').getContext('2d');
-      if (chartInstUsuario) chartInstUsuario.destroy();
-
-      chartInstUsuario = new Chart(ctxUsr, {
-        type: 'doughnut',
-        data: {
-          labels: labelsUsr,
-          datasets: [{
-            data: valoresUsr,
-            backgroundColor: coloresPro,
-            borderWidth: 1
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { position: 'right' },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  let label = context.label || '';
-                  let val = context.raw || 0;
-                  let total = context.dataset.data.reduce((a, b) => a + b, 0);
-                  let porcentaje = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
-                  return ` ${label}: ${val.toLocaleString()} u. (${porcentaje}%)`;
-                }
-              }
-            }
-          },
-          // INTERACTIVIDAD AL HACER CLIC EN EL GRÁFICO DE TÉCNICOS
-          onClick: (event, elements) => {
-            if (elements.length > 0) {
-              const index = elements[0].index;
-              const tecnicoSeleccionado = labelsUsr[index];
-              
-              // Asignar al selector superior y aplicar filtro automáticamente
-              document.getElementById("filtro-usuario").value = tecnicoSeleccionado;
-              aplicarFiltros();
-            }
-          }
-        }
-      });
-
-      // 3. Gráfico Estados (Pie)
+      // 3. Gráfico Estados (Conteo de movimientos)
       const dataEstado = agruparDatos(datos, 'estado', 'count');
       crearGrafico('chartEstado', 'pie', Object.keys(dataEstado), Object.values(dataEstado), chartInstEstado, (inst) => chartInstEstado = inst);
 
-      // 4. Gráfico Materiales (Barras)
+      // 4. Gráfico Materiales (Top 10 Cantidades)
       let dataMateriales = agruparDatos(datos, 'descripcion', 'sum_cantidad');
       let matsOrdenados = Object.entries(dataMateriales).sort((a, b) => b[1] - a[1]).slice(0, 10);
       
@@ -331,10 +293,9 @@
               callbacks: {
                 label: function(context) {
                   let label = context.label || '';
-                  let val = context.raw || 0;
-                  let total = context.dataset.data.reduce((a, b) => a + b, 0);
-                  let porcentaje = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
-                  return ` ${label}: ${val.toLocaleString()} u. (${porcentaje}%)`;
+                  if (label) label += ': ';
+                  label += context.raw.toLocaleString(); // Formato de miles
+                  return label;
                 }
               }
             }
@@ -362,12 +323,14 @@
       return texto.length > max ? texto.substring(0, max) + "..." : texto;
     }
 
+    // ================== EXPORTACIÓN PDF ==================
     function exportarPDF() {
       const elemento = document.getElementById("zona-exportable");
       const boton = document.querySelector(".btn-pdf");
       boton.innerText = "⏳ Generando...";
       boton.disabled = true;
 
+      // Configuramos para que tome la captura en horizontal (Landscape)
       const opciones = {
         margin:       10,
         filename:     `Reporte_ScannerBot_${new Date().toLocaleDateString().replace(/\//g, '-')}.pdf`,
